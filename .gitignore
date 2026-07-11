@@ -1,0 +1,50 @@
+# Environment and secrets
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+*.key
+*.pem
+secrets/
+credentials/
+
+# Python caching & environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+.env/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Model artifacts
+*.joblib
+*.pkl
+*.pkl.gz
+
+# Frontend dependencies and builds
+node_modules/
+dist-frontend/
+dist/
+.eslintcache
+*.log
+
+# Editor configurations
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Databases and cache
+credit_risk.db
+*.db
+catboost_info/

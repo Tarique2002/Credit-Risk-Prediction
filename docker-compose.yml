@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: credit_risk_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_secure_password_change_me
+      POSTGRES_DB: credit_risk
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: credit_risk_backend
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres_secure_password_change_me@db:5432/credit_risk
+      - JWT_SECRET=8f3c7e9a2b5d4e6f1a8c3e5b7d9f2a4c6e8d0b2a4c6e8f0a2c4e6f8a0b2c4e6
+      - JWT_REFRESH_SECRET=7a3b5c2d1e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5
+      - PORT=8000
+      - FRONTEND_URL=http://localhost
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: credit_risk_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

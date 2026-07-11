@@ -1,0 +1,92 @@
+{
+    "best_model": "Logistic_Regression",
+    "metrics": {
+        "Logistic_Regression": {
+            "accuracy": 0.859,
+            "precision": 0.7,
+            "recall": 0.28994082840236685,
+            "f1_score": 0.4100418410041841,
+            "roc_auc": 0.8489664551869496,
+            "confusion_matrix": [
+                [
+                    810,
+                    21
+                ],
+                [
+                    120,
+                    49
+                ]
+            ]
+        },
+        "Random_Forest": {
+            "accuracy": 0.853,
+            "precision": 0.6527777777777778,
+            "recall": 0.2781065088757396,
+            "f1_score": 0.3900414937759336,
+            "roc_auc": 0.8301219746651571,
+            "confusion_matrix": [
+                [
+                    806,
+                    25
+                ],
+                [
+                    122,
+                    47
+                ]
+            ]
+        },
+        "XGBoost": {
+            "accuracy": 0.849,
+            "precision": 0.5978260869565217,
+            "recall": 0.3254437869822485,
+            "f1_score": 0.421455938697318,
+            "roc_auc": 0.8052036827377009,
+            "confusion_matrix": [
+                [
+                    794,
+                    37
+                ],
+                [
+                    114,
+                    55
+                ]
+            ]
+        },
+        "CatBoost": {
+            "accuracy": 0.852,
+            "precision": 0.6235294117647059,
+            "recall": 0.3136094674556213,
+            "f1_score": 0.41732283464566927,
+            "roc_auc": 0.8371107740727292,
+            "confusion_matrix": [
+                [
+                    799,
+                    32
+                ],
+                [
+                    116,
+                    53
+                ]
+            ]
+        },
+        "LightGBM": {
+            "accuracy": 0.864,
+            "precision": 0.6813186813186813,
+            "recall": 0.3668639053254438,
+            "f1_score": 0.47692307692307695,
+            "roc_auc": 0.826750404090032,
+            "confusion_matrix": [
+                [
+                    802,
+                    29
+                ],
+                [
+                    107,
+                    62
+                ]
+            ]
+        }
+    },
+    "trained_at": "2026-07-10T19:25:38.119592",
+    "model_version": "1.0.0"
+}
