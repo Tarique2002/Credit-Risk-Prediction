@@ -80,3 +80,5 @@ docker-compose up --build
 - **React Web App**: `http://localhost` (Port 80)
 - **FastAPI Documentation**: `http://localhost:8000/swagger`
 - **Postgres Database**: `localhost:5432`
+Updated project documentation.
+Update README
