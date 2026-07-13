@@ -1,4 +1,5 @@
-const API_BASE_URL = "http://localhost:8000/api";
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
 export const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
@@ -47,7 +48,7 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   if (contentType.includes("application/pdf") || contentType.includes("text/csv")) {
     return response;
   }
-  
+
   if (response.status === 204) {
     return null;
   }
@@ -72,7 +73,7 @@ export const apiUploadFetch = async (endpoint: string, file: File) => {
       body: formData,
     });
   } catch (error) {
-    throw new Error("Unable to connect to the backend server. Please verify the API is running on http://localhost:8000.");
+    throw new Error("Unable to connect to the backend server. Please check that the backend is running and the API URL is configured correctly.");
   }
 
   if (response.status === 401) {
