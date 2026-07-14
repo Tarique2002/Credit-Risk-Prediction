@@ -5,10 +5,11 @@ import * as z from "zod";
 import { Link } from "react-router-dom";
 import { 
   Users, Search, UserPlus, RefreshCw, 
-  ArrowLeft, ArrowRight, Mail, Phone
+  ArrowLeft, ArrowRight, Mail, Phone,
+  ChevronLeft, ChevronRight, X, Sparkles,
+  Briefcase, ShieldCheck, DollarSign
 } from "lucide-react";
 import { apiFetch } from "../utils/api";
-import { GlassCard } from "../components/GlassCard";
 import { motion, AnimatePresence } from "framer-motion";
 import { Magnetic } from "../components/Magnetic";
 
@@ -34,7 +35,7 @@ export const CustomerDirectory: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [skip, setSkip] = useState(0);
-  const [limit] = useState(15);
+  const [limit] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,14 +51,14 @@ export const CustomerDirectory: React.FC = () => {
   } = useForm<CustomerFormData>({
     resolver: zodResolver(customerSchema),
     defaultValues: {
-      income: 50000,
+      income: 60000,
       employment_status: "employed",
-      employment_duration_months: 12,
-      debt_to_income_ratio: 0.25,
-      payment_history_score: 95,
+      employment_duration_months: 24,
+      debt_to_income_ratio: 0.28,
+      payment_history_score: 90,
       existing_loans_count: 1,
-      total_debt: 5000,
-      savings_balance: 10000,
+      total_debt: 7500,
+      savings_balance: 12000,
     }
   });
 
@@ -103,342 +104,351 @@ export const CustomerDirectory: React.FC = () => {
     }
   };
 
-  const pageIndex = Math.floor(skip / limit) + 1;
-  const totalPages = Math.ceil(total / limit) || 1;
+  const pageCount = Math.ceil(total / limit) || 1;
+  const currentPage = Math.floor(skip / limit) + 1;
+
+  const handlePageChange = (page: number) => {
+    setSkip((page - 1) * limit);
+  };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 text-left relative">
+      
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/[0.04] pb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Users className="text-cyan-400 w-6 h-6" /> Client Directory
+          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2.5">
+            <Users className="text-cyan-400 w-5 h-5" /> Client Directory
           </h1>
           <p className="text-slate-500 text-xs mt-1">
-            Browse and manage corporate accounts and client profiles
+            Maintain customer risk ledger sheets, update savings indicators, and trigger predictions.
           </p>
         </div>
-        <Magnetic strength={0.3} scale={1.04}>
-          <motion.button
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 font-mono text-xs uppercase tracking-wider rounded-xl px-4 py-3 flex items-center gap-2 transition-all cursor-pointer shadow-lg"
-          >
-            <UserPlus className="w-4 h-4" data-magnetic-inner /> <span data-magnetic-inner>Add New Customer</span>
-          </motion.button>
-        </Magnetic>
+
+        <motion.button 
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setShowAddForm(true)}
+          className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all text-xs font-semibold cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.15)] shrink-0"
+        >
+          <UserPlus className="w-4 h-4" /> Register Borrower
+        </motion.button>
       </div>
 
       {error && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-red-500/10 border border-red-500/20 text-red-200 px-5 py-4 rounded-2xl text-xs font-mono"
-        >
+        <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-2xl text-xs font-mono">
           {error}
-        </motion.div>
+        </div>
       )}
 
-      {/* Add Customer Form */}
+      {/* Main Ledger Table and Filters */}
+      <div className="p-6 rounded-3xl glass-panel border-white/[0.04]">
+        
+        {/* Table Search & quick utilities bar */}
+        <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6">
+          <div className="relative w-full sm:w-72 bg-white/[0.02] border border-white/[0.04] rounded-xl flex items-center px-3.5 py-2 hover:border-white/[0.08] transition-all">
+            <Search className="w-4.5 h-4.5 text-slate-500 shrink-0" />
+            <input
+              type="text"
+              placeholder="Search by client name..."
+              value={search}
+              onChange={handleSearchChange}
+              className="bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none w-full ml-2"
+            />
+          </div>
+          
+          <div className="text-[10px] font-mono text-slate-500 flex items-center justify-end uppercase tracking-wider">
+            {total} RECORDED PROFILE(S)
+          </div>
+        </div>
+
+        {/* Directory Ledger Grid */}
+        {loading ? (
+          <div className="space-y-3 py-6">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-12 w-full shimmer-placeholder rounded-xl" />
+            ))}
+          </div>
+        ) : customers.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-white/[0.04] text-[9px] font-mono uppercase text-slate-500">
+                  <th className="py-3 px-4">Borrower Name</th>
+                  <th className="py-3 px-4">Contact Info</th>
+                  <th className="py-3 px-4 text-center">Base Income</th>
+                  <th className="py-3 px-4 text-center">FICO History</th>
+                  <th className="py-3 px-4 text-center">DTI Ratio</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.02]">
+                {customers.map((c) => (
+                  <tr key={c.id} className="hover:bg-white/[0.01] transition-colors group">
+                    <td className="py-3.5 px-4 font-semibold text-slate-200 group-hover:text-cyan-400 transition-colors">
+                      <Link to={`/customers/${c.id}`} className="block">
+                        {c.first_name} {c.last_name}
+                      </Link>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-[10px] text-slate-400">
+                      <div className="flex items-center gap-1.5"><Mail className="w-3 h-3 text-slate-600" /> {c.email}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5"><Phone className="w-3 h-3 text-slate-600" /> {c.phone}</div>
+                    </td>
+                    <td className="py-3.5 px-4 text-center font-mono text-slate-300">
+                      ${c.income.toLocaleString()}
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="font-mono text-slate-200">{c.payment_history_score}/100</div>
+                      <span className="text-[9px] text-slate-500 font-mono">history score</span>
+                    </td>
+                    <td className="py-3.5 px-4 text-center font-mono text-slate-300">
+                      {(c.debt_to_income_ratio * 100).toFixed(0)}%
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <Link 
+                        to={`/customers/${c.id}`}
+                        className="inline-flex items-center gap-1 text-[10px] font-mono text-cyan-400 hover:text-cyan-300 uppercase"
+                      >
+                        Profile File <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-16 space-y-4">
+            <Users className="w-10 h-10 text-slate-600 mx-auto" />
+            <h4 className="text-slate-400 text-xs font-mono uppercase tracking-wider font-bold">Ledger Empty</h4>
+            <p className="text-[10px] text-slate-500 max-w-xs mx-auto leading-normal">
+              No registered customer profiles match your search criteria. Create one using the button above.
+            </p>
+          </div>
+        )}
+
+        {/* Pagination Console */}
+        {pageCount > 1 && (
+          <div className="flex justify-between items-center border-t border-white/[0.04] pt-6 mt-6">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3.5 py-1.5 bg-white/[0.01] hover:bg-white/[0.03] border border-white/[0.02] text-slate-400 hover:text-white rounded-xl text-xs transition-all disabled:opacity-40 flex items-center gap-1"
+            >
+              <ChevronLeft className="w-4 h-4" /> Previous
+            </button>
+
+            <span className="text-[10px] font-mono text-slate-500">
+              PAGE {currentPage} OF {pageCount}
+            </span>
+
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === pageCount}
+              className="px-3.5 py-1.5 bg-white/[0.01] hover:bg-white/[0.03] border border-white/[0.02] text-slate-400 hover:text-white rounded-xl text-xs transition-all disabled:opacity-40 flex items-center gap-1"
+            >
+              Next <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+      </div>
+
+      {/* Drawer slide-over for borrower registration */}
       <AnimatePresence>
         {showAddForm && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden"
-          >
-            <GlassCard glowColor="cyan" className="space-y-6 border border-cyan-500/10">
-              <div className="border-b border-white/[0.04] pb-4">
-                <h2 className="text-sm font-bold text-white uppercase font-mono tracking-wider">New Profile Registry</h2>
-                <p className="text-[11px] text-slate-500 mt-1">Please input customer details accurately. Background validation triggers automatically.</p>
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black z-40"
+              onClick={() => setShowAddForm(false)}
+            />
+            
+            <motion.div 
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="fixed top-0 right-0 h-full w-full max-w-md bg-[#080d19]/90 backdrop-blur-2xl border-l border-white/[0.08] shadow-2xl z-50 overflow-y-auto p-6 md:p-8"
+            >
+              {/* Drawer Title header */}
+              <div className="flex justify-between items-center border-b border-white/[0.04] pb-4 mb-6">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="w-5 h-5 text-cyan-400" />
+                  <div>
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">Register Borrower</h3>
+                    <p className="text-[8px] font-mono text-slate-500 uppercase">Input customer parameters</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowAddForm(false)}
+                  className="p-1 hover:bg-white/5 text-slate-400 hover:text-white rounded-md transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
               {formError && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-2xl text-xs font-mono">
+                <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-3.5 rounded-2xl text-[10px] font-mono mb-4">
                   {formError}
                 </div>
               )}
 
-              <form onSubmit={handleSubmit(onSubmitCustomer)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  {/* Part 1: Personal */}
-                  <div className="space-y-4">
-                    <h3 className="text-[11px] font-bold text-cyan-400 font-mono uppercase tracking-widest border-l-2 border-cyan-500 pl-2">Personal Identity</h3>
-                    
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-mono uppercase text-slate-400">First Name</label>
-                      <input
-                        type="text"
-                        {...register("first_name")}
-                        className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                      />
-                      {errors.first_name && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.first_name.message}</p>}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-mono uppercase text-slate-400">Last Name</label>
-                      <input
-                        type="text"
-                        {...register("last_name")}
-                        className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                      />
-                      {errors.last_name && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.last_name.message}</p>}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-mono uppercase text-slate-400">Email Address</label>
-                      <input
-                        type="email"
-                        {...register("email")}
-                        className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                        placeholder="name@email.com"
-                      />
-                      {errors.email && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.email.message}</p>}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-mono uppercase text-slate-400">Phone</label>
-                      <input
-                        type="text"
-                        {...register("phone")}
-                        className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                        placeholder="+14155552671"
-                      />
-                      {errors.phone && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.phone.message}</p>}
-                    </div>
+              {/* Form elements */}
+              <form onSubmit={handleSubmit(onSubmitCustomer)} className="space-y-4">
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-mono uppercase text-slate-400">First Name</label>
+                    <input 
+                      type="text" 
+                      {...register("first_name")} 
+                      className="w-full bg-[#030712] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    />
+                    {errors.first_name && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.first_name.message}</p>}
                   </div>
 
-                  {/* Part 2: Employment */}
-                  <div className="space-y-4">
-                    <h3 className="text-[11px] font-bold text-cyan-400 font-mono uppercase tracking-widest border-l-2 border-cyan-500 pl-2">Employment Capacity</h3>
-                    
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-mono uppercase text-slate-400">Employment Status</label>
-                      <select
-                        {...register("employment_status")}
-                        className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500/50"
-                      >
-                        <option value="employed">Employed</option>
-                        <option value="unemployed">Unemployed</option>
-                        <option value="self_employed">Self Employed</option>
-                        <option value="retired">Retired</option>
-                      </select>
-                      {errors.employment_status && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.employment_status.message}</p>}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-mono uppercase text-slate-400">Duration (Months)</label>
-                      <input
-                        type="number"
-                        {...register("employment_duration_months", { valueAsNumber: true })}
-                        className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                      />
-                      {errors.employment_duration_months && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.employment_duration_months.message}</p>}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-mono uppercase text-slate-400">Annual Income ($)</label>
-                      <input
-                        type="number"
-                        step="any"
-                        {...register("income", { valueAsNumber: true })}
-                        className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                      />
-                      {errors.income && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.income.message}</p>}
-                    </div>
-                  </div>
-
-                  {/* Part 3: Financial Risk metrics */}
-                  <div className="space-y-4">
-                    <h3 className="text-[11px] font-bold text-cyan-400 font-mono uppercase tracking-widest border-l-2 border-cyan-500 pl-2">Financial Risk</h3>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-mono uppercase text-slate-400">DTI Ratio</label>
-                        <input
-                          type="number"
-                          step="any"
-                          {...register("debt_to_income_ratio", { valueAsNumber: true })}
-                          className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                          placeholder="e.g. 0.25"
-                        />
-                        {errors.debt_to_income_ratio && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.debt_to_income_ratio.message}</p>}
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-mono uppercase text-slate-400">Pay Score (%)</label>
-                        <input
-                          type="number"
-                          step="any"
-                          {...register("payment_history_score", { valueAsNumber: true })}
-                          className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                        />
-                        {errors.payment_history_score && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.payment_history_score.message}</p>}
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-mono uppercase text-slate-400">Savings Account Balance ($)</label>
-                      <input
-                        type="number"
-                        step="any"
-                        {...register("savings_balance", { valueAsNumber: true })}
-                        className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                      />
-                      {errors.savings_balance && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.savings_balance.message}</p>}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-mono uppercase text-slate-400">Existing Loans</label>
-                        <input
-                          type="number"
-                          {...register("existing_loans_count", { valueAsNumber: true })}
-                          className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                        />
-                        {errors.existing_loans_count && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.existing_loans_count.message}</p>}
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-mono uppercase text-slate-400">Total Debt ($)</label>
-                        <input
-                          type="number"
-                          step="any"
-                          {...register("total_debt", { valueAsNumber: true })}
-                          className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                        />
-                        {errors.total_debt && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.total_debt.message}</p>}
-                      </div>
-                    </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-mono uppercase text-slate-400">Last Name</label>
+                    <input 
+                      type="text" 
+                      {...register("last_name")} 
+                      className="w-full bg-[#030712] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    />
+                    {errors.last_name && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.last_name.message}</p>}
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 border-t border-white/[0.04] pt-5 items-center">
-                  <Magnetic strength={0.2} scale={1.02}>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddForm(false)}
-                      className="bg-white/[0.02] hover:bg-white/[0.06] text-slate-400 border border-white/[0.04] rounded-xl px-4 py-2 text-xs font-mono uppercase tracking-wider transition-colors cursor-pointer"
-                    >
-                      <span data-magnetic-inner>Cancel</span>
-                    </button>
-                  </Magnetic>
-                  
-                  <Magnetic strength={0.3} scale={1.04}>
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 font-mono text-xs uppercase tracking-wider rounded-xl px-5 py-2.5 transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      {submitting ? "Registering..." : <span data-magnetic-inner>Register Profile</span>}
-                    </button>
-                  </Magnetic>
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-mono uppercase text-slate-400">Email Address</label>
+                  <input 
+                    type="email" 
+                    {...register("email")} 
+                    className="w-full bg-[#030712] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                  />
+                  {errors.email && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.email.message}</p>}
                 </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-mono uppercase text-slate-400">Phone Number</label>
+                  <input 
+                    type="text" 
+                    {...register("phone")} 
+                    className="w-full bg-[#030712] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                  />
+                  {errors.phone && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.phone.message}</p>}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-mono uppercase text-slate-400">Annual Base Income ($)</label>
+                  <input 
+                    type="number" 
+                    {...register("income", { valueAsNumber: true })} 
+                    className="w-full bg-[#030712] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                  />
+                  {errors.income && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.income.message}</p>}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-mono uppercase text-slate-400">Employment</label>
+                    <select 
+                      {...register("employment_status")} 
+                      className="w-full bg-[#030712] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    >
+                      <option value="employed">Employed</option>
+                      <option value="self_employed">Self-Employed</option>
+                      <option value="unemployed">Unemployed</option>
+                      <option value="retired">Retired</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-mono uppercase text-slate-400">Duration (Months)</label>
+                    <input 
+                      type="number" 
+                      {...register("employment_duration_months", { valueAsNumber: true })} 
+                      className="w-full bg-[#030712] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-mono uppercase text-slate-400">DTI Ratio</label>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      {...register("debt_to_income_ratio", { valueAsNumber: true })} 
+                      className="w-full bg-[#030712] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-mono uppercase text-slate-400">FICO Score Score</label>
+                    <input 
+                      type="number" 
+                      {...register("payment_history_score", { valueAsNumber: true })} 
+                      className="w-full bg-[#030712] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-mono uppercase text-slate-400">Total Debt ($)</label>
+                    <input 
+                      type="number" 
+                      {...register("total_debt", { valueAsNumber: true })} 
+                      className="w-full bg-[#030712] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-mono uppercase text-slate-400">Savings ($)</label>
+                    <input 
+                      type="number" 
+                      {...register("savings_balance", { valueAsNumber: true })} 
+                      className="w-full bg-[#030712] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-mono uppercase text-slate-400">Active Loan count</label>
+                  <input 
+                    type="number" 
+                    {...register("existing_loans_count", { valueAsNumber: true })} 
+                    className="w-full bg-[#030712] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                  />
+                </div>
+
+                <div className="pt-4 flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddForm(false)}
+                    className="w-1/2 bg-white/[0.01] hover:bg-white/[0.03] border border-white/[0.04] text-slate-400 rounded-xl py-2.5 text-xs font-mono uppercase cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-1/2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl py-2.5 text-xs font-mono uppercase cursor-pointer shadow-lg disabled:opacity-50"
+                  >
+                    {submitting ? "Seeding DB..." : "Seed Registry"}
+                  </button>
+                </div>
+
               </form>
-            </GlassCard>
-          </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 
-      {/* Directory Table */}
-      <GlassCard className="border border-white/[0.04]">
-        {/* Search tool */}
-        <div className="flex items-center bg-[#070913]/60 border border-white/[0.06] rounded-2xl px-4 py-3 mb-6 max-w-md focus-within:border-cyan-500/50 transition-all duration-300">
-          <Search className="w-4 h-4 text-slate-500 mr-3" />
-          <input
-            type="text"
-            value={search}
-            onChange={handleSearchChange}
-            placeholder="Search clients by name or email address..."
-            className="bg-transparent border-none text-slate-200 placeholder-slate-600 focus:outline-none w-full text-xs font-mono"
-          />
-        </div>
-
-        {loading ? (
-          <div className="flex justify-center items-center py-16">
-            <RefreshCw className="w-7 h-7 text-cyan-400 animate-spin" />
-          </div>
-        ) : customers.length === 0 ? (
-          <p className="text-slate-500 text-center py-16 text-xs font-mono">No client profiles found matching criteria.</p>
-        ) : (
-          <div className="space-y-5">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-white/[0.04] text-[10px] font-mono uppercase text-slate-500">
-                    <th className="py-3 px-4">Client Name</th>
-                    <th className="py-3 px-4">Email</th>
-                    <th className="py-3 px-4">Phone</th>
-                    <th className="py-3 px-4 text-right">Income</th>
-                    <th className="py-3 px-4 text-center">Employment</th>
-                    <th className="py-3 px-4 text-center">Payment History</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.02]">
-                  {customers.map((c) => (
-                    <tr key={c.id} className="hover:bg-white/[0.01] transition-colors group">
-                      <td className="py-3.5 px-4 font-bold text-slate-200">
-                        <Link to={`/customers/${c.id}`} className="hover:text-cyan-400 transition-colors">
-                          {c.first_name} {c.last_name}
-                        </Link>
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-400 font-mono">{c.email}</td>
-                      <td className="py-3.5 px-4 text-slate-500 font-mono">{c.phone}</td>
-                      <td className="py-3.5 px-4 text-right font-mono text-slate-200">${c.income.toLocaleString()}</td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span className="capitalize px-2 py-0.5 rounded bg-slate-900 border border-white/[0.04] text-slate-300">
-                          {c.employment_status.replace("_", " ")}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-center font-mono text-emerald-400 font-semibold">{c.payment_history_score}%</td>
-                      <td className="py-3.5 px-4 text-right">
-                        <Magnetic strength={0.2} scale={1.03}>
-                          <Link
-                            to={`/customers/${c.id}`}
-                            className="bg-white/[0.02] hover:bg-cyan-500/10 border border-white/[0.04] hover:border-cyan-500/20 text-slate-300 hover:text-cyan-400 text-[10px] font-mono font-bold uppercase tracking-wider px-3.5 py-2 rounded-xl transition-all inline-block"
-                          >
-                            <span data-magnetic-inner>View File</span>
-                          </Link>
-                        </Magnetic>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            <div className="flex justify-between items-center pt-4 border-t border-white/[0.04] text-[10px] font-mono text-slate-500">
-              <span>Showing {customers.length} of {total} records</span>
-              <div className="flex items-center gap-3">
-                <Magnetic strength={0.3} scale={1.1}>
-                  <button
-                    disabled={skip === 0}
-                    onClick={() => setSkip(Math.max(0, skip - limit))}
-                    className="bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] p-2 rounded-lg disabled:opacity-30 cursor-pointer transition-colors"
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" data-magnetic-inner />
-                  </button>
-                </Magnetic>
-                <span>Page {pageIndex} / {totalPages}</span>
-                <Magnetic strength={0.3} scale={1.1}>
-                  <button
-                    disabled={pageIndex >= totalPages}
-                    onClick={() => setSkip(skip + limit)}
-                    className="bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] p-2 rounded-lg disabled:opacity-30 cursor-pointer transition-colors"
-                  >
-                    <ArrowRight className="w-3.5 h-3.5" data-magnetic-inner />
-                  </button>
-                </Magnetic>
-              </div>
-            </div>
-          </div>
-        )}
-      </GlassCard>
     </div>
   );
 };
+export default CustomerDirectory;

@@ -4,10 +4,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { 
   Calculator, Upload, FileText, AlertTriangle, ShieldCheck, 
-  RefreshCw, BarChart2, Users 
+  RefreshCw, BarChart2, Users, ChevronRight, ChevronLeft, 
+  ThumbsUp, ThumbsDown, CheckCircle2, AlertOctagon, Sparkles,
+  Download, Printer, FileClock, UserCheck
 } from "lucide-react";
 import { apiFetch, apiUploadFetch } from "../utils/api";
-import { GlassCard } from "../components/GlassCard";
 import { motion, AnimatePresence } from "framer-motion";
 import { Magnetic } from "../components/Magnetic";
 
@@ -45,19 +46,25 @@ export const Predict: React.FC = () => {
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
 
+  // Multi-step form step state
+  const [step, setStep] = useState(1);
+  const totalSteps = 5;
+
   const {
     register,
     handleSubmit,
     setValue,
+    getValues,
+    trigger,
     reset,
     formState: { errors },
   } = useForm<PredictFormData>({
     resolver: zodResolver(predictSchema),
     defaultValues: {
-      income: 60000,
+      income: 65000,
       employment_status: "employed",
       employment_duration_months: 24,
-      debt_to_income_ratio: 0.25,
+      debt_to_income_ratio: 0.28,
       payment_history_score: 92,
       existing_loans_count: 1,
       total_debt: 8000,
@@ -100,7 +107,34 @@ export const Predict: React.FC = () => {
       setValue("existing_loans_count", selected.existing_loans_count);
       setValue("total_debt", selected.total_debt);
       setValue("savings_balance", selected.savings_balance);
+      
+      // Auto-validate and jump to step 4 or 5
+      trigger();
+      setStep(5);
     }
+  };
+
+  const handleNextStep = async () => {
+    // Validate current step fields before proceeding
+    let fieldsToValidate: (keyof PredictFormData)[] = [];
+    if (step === 1) {
+      fieldsToValidate = ["first_name", "last_name", "email", "phone"];
+    } else if (step === 2) {
+      fieldsToValidate = ["income", "employment_status", "employment_duration_months"];
+    } else if (step === 3) {
+      fieldsToValidate = ["savings_balance", "total_debt", "debt_to_income_ratio"];
+    } else if (step === 4) {
+      fieldsToValidate = ["payment_history_score", "existing_loans_count"];
+    }
+
+    const isValid = await trigger(fieldsToValidate);
+    if (isValid) {
+      setStep(prev => Math.min(totalSteps, prev + 1));
+    }
+  };
+
+  const handlePrevStep = () => {
+    setStep(prev => Math.max(1, prev - 1));
   };
 
   const onSubmitSingle = async (data: PredictFormData) => {
@@ -153,49 +187,63 @@ export const Predict: React.FC = () => {
 
   const getRiskColor = (tier: string) => {
     switch (tier) {
-      case "Very Low": return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
-      case "Low": return "text-green-400 bg-green-500/10 border-green-500/20";
-      case "Medium": return "text-amber-400 bg-amber-500/10 border-amber-500/20";
-      case "High": return "text-orange-400 bg-orange-500/10 border-orange-500/20";
-      case "Very High": return "text-red-400 bg-red-500/10 border-red-500/20";
-      default: return "text-slate-400 bg-slate-900/40 border-slate-800";
+      case "Very Low": return "text-emerald-400 border-emerald-500/20 bg-emerald-500/5";
+      case "Low": return "text-green-400 border-green-500/20 bg-green-500/5";
+      case "Medium": return "text-amber-400 border-amber-500/20 bg-amber-500/5";
+      case "High": return "text-orange-400 border-orange-500/20 bg-orange-500/5";
+      case "Very High": return "text-red-400 border-red-500/20 bg-red-500/5";
+      default: return "text-slate-400 border-slate-800 bg-slate-900/40";
     }
   };
 
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="border-b border-white/[0.04] pb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-          <Calculator className="text-cyan-400 w-6 h-6" /> Credit Decisioning
-        </h1>
-        <p className="text-slate-500 text-xs mt-1">
-          Perform predictive default calculations, audit synthetic fraud indicators, and explain model coefficients
-        </p>
-      </div>
+  const handlePrint = () => {
+    window.print();
+  };
 
-      {/* Tabs */}
-      <div className="flex gap-4 border-b border-white/[0.04] pb-3">
-        <button
-          onClick={() => setActiveTab("single")}
-          className={`px-4 py-2 text-xs font-mono font-bold tracking-widest transition-all cursor-pointer ${
-            activeTab === "single"
-              ? "text-cyan-400 border-b-2 border-cyan-500"
-              : "text-slate-500 hover:text-slate-300"
-          }`}
-        >
-          [SINGLE CALCULATOR]
-        </button>
-        <button
-          onClick={() => setActiveTab("bulk")}
-          className={`px-4 py-2 text-xs font-mono font-bold tracking-widest transition-all cursor-pointer ${
-            activeTab === "bulk"
-              ? "text-cyan-400 border-b-2 border-cyan-500"
-              : "text-slate-500 hover:text-slate-300"
-          }`}
-        >
-          [BATCH CSV UPLOAD]
-        </button>
+  // SHAP formatting drivers
+  const positiveDrivers = result?.shap_explanations?.filter((e: any) => e.shap_value < 0) || [];
+  const negativeDrivers = result?.shap_explanations?.filter((e: any) => e.shap_value >= 0) || [];
+
+  return (
+    <div className="space-y-8 text-left">
+      
+      {/* Header */}
+      <div className="border-b border-white/[0.04] pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2.5">
+            <Calculator className="text-cyan-400 w-5 h-5" /> Credit Decisioning
+          </h1>
+          <p className="text-slate-500 text-xs mt-1">
+            Perform predictive default calculations, run ensemble simulations, and inspect explainable risk vectors.
+          </p>
+        </div>
+
+        {/* Tab Selector Links */}
+        <div className="flex bg-[#0b0f19] border border-white/[0.04] p-1 rounded-xl shrink-0">
+          <button
+            onClick={() => {
+              setActiveTab("single");
+              setResult(null);
+            }}
+            className={`px-4 py-2 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider transition-all ${
+              activeTab === "single"
+                ? "bg-white/[0.04] text-cyan-400 font-bold border border-white/[0.02]"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            Single Underwriting
+          </button>
+          <button
+            onClick={() => setActiveTab("bulk")}
+            className={`px-4 py-2 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider transition-all ${
+              activeTab === "bulk"
+                ? "bg-white/[0.04] text-cyan-400 font-bold border border-white/[0.02]"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            Batch Processing
+          </button>
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
@@ -206,211 +254,314 @@ export const Predict: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+            className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
           >
-            {/* Form */}
-            <div className="lg:col-span-2">
-              <GlassCard className="border border-white/[0.04]">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-white/[0.04] pb-4">
+            
+            {/* Form Steps Block */}
+            <div className="lg:col-span-7">
+              <div className="p-6 md:p-8 rounded-3xl glass-panel border-white/[0.04]">
+                
+                {/* Form header with prefill options */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 border-b border-white/[0.04] pb-4">
                   <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-                    <Calculator className="w-4.5 h-4.5 text-cyan-400" /> Assessment Inputs
+                    <UserCheck className="w-4 h-4 text-cyan-400" /> Borrower Profile Application
                   </h2>
                   
                   <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Users className="w-4 h-4 text-slate-500 shrink-0" />
+                    <Users className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                     <select
                       onChange={handleCustomerSelect}
-                      className="bg-[#0b0f19] border border-white/[0.06] rounded-xl px-3 py-1.5 text-xs text-cyan-400 focus:outline-none w-full sm:w-auto"
+                      className="bg-[#030712] border border-white/[0.06] rounded-xl px-3 py-1.5 text-[10px] font-mono text-cyan-400 focus:outline-none w-full sm:w-auto"
                       defaultValue=""
                     >
-                      <option value="" disabled>Pre-fill from profile...</option>
+                      <option value="" disabled>Pre-fill from profile registry...</option>
                       {customers.map((c) => (
                         <option key={c.id} value={c.id.toString()}>
-                          {c.first_name} {c.last_name}
+                          {c.first_name} {c.last_name} ({c.email})
                         </option>
                       ))}
                     </select>
                   </div>
                 </div>
 
+                {/* Steps Navigation indicator */}
+                <div className="mb-8 flex items-center justify-between text-[10px] font-mono font-bold text-slate-500">
+                  {[...Array(totalSteps)].map((_, i) => {
+                    const stepNum = i + 1;
+                    const isActive = step === stepNum;
+                    const isCompleted = step > stepNum;
+                    return (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all ${
+                          isActive 
+                            ? "border-cyan-500 text-cyan-400 bg-cyan-500/10 shadow-[0_0_10px_rgba(6,182,212,0.2)]" 
+                            : isCompleted
+                            ? "border-emerald-500 text-emerald-400 bg-emerald-500/10"
+                            : "border-white/[0.06] text-slate-500 bg-[#030712]"
+                        }`}>
+                          {stepNum}
+                        </span>
+                        <span className={`hidden sm:inline ${isActive ? "text-slate-200" : ""}`}>
+                          {stepNum === 1 && "Identity"}
+                          {stepNum === 2 && "Income"}
+                          {stepNum === 3 && "Assets"}
+                          {stepNum === 4 && "Credit"}
+                          {stepNum === 5 && "Review"}
+                        </span>
+                        {stepNum < totalSteps && <span className="text-white/5 font-normal">|</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+
                 <form onSubmit={handleSubmit(onSubmitSingle)} className="space-y-6">
                   <input type="hidden" {...register("customer_id")} />
                   
-                  {/* Personal Section */}
-                  <div className="space-y-4">
-                    <h3 className="text-[11px] font-bold text-cyan-400 font-mono uppercase tracking-widest border-l-2 border-cyan-500 pl-2">Personal File Details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-mono uppercase text-slate-400">First Name</label>
-                        <input
-                          type="text"
-                          {...register("first_name")}
-                          className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                        />
-                        {errors.first_name && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.first_name.message}</p>}
+                  {/* Step 1: Personal Details */}
+                  {step === 1 && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                      <h3 className="text-xs font-bold text-cyan-400 font-mono uppercase tracking-wider">Step 1: Borrower Identity</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-mono uppercase text-slate-400">First Name</label>
+                          <input
+                            type="text"
+                            {...register("first_name")}
+                            className="w-full bg-[#030712]/60 border border-white/[0.06] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/50"
+                          />
+                          {errors.first_name && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.first_name.message}</p>}
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-mono uppercase text-slate-400">Last Name</label>
+                          <input
+                            type="text"
+                            {...register("last_name")}
+                            className="w-full bg-[#030712]/60 border border-white/[0.06] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/50"
+                          />
+                          {errors.last_name && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.last_name.message}</p>}
+                        </div>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-mono uppercase text-slate-400">Last Name</label>
-                        <input
-                          type="text"
-                          {...register("last_name")}
-                          className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                        />
-                        {errors.last_name && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.last_name.message}</p>}
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-mono uppercase text-slate-400">Email Address</label>
+                        <label className="text-[10px] font-mono uppercase text-slate-400">Email Address</label>
                         <input
                           type="email"
                           {...register("email")}
-                          className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
+                          className="w-full bg-[#030712]/60 border border-white/[0.06] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/50"
                         />
-                        {errors.email && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.email.message}</p>}
+                        {errors.email && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.email.message}</p>}
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-mono uppercase text-slate-400">Phone Number</label>
+                        <label className="text-[10px] font-mono uppercase text-slate-400">Contact Number</label>
                         <input
                           type="text"
                           {...register("phone")}
-                          className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                          placeholder="+14155552671"
+                          className="w-full bg-[#030712]/60 border border-white/[0.06] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/50"
                         />
-                        {errors.phone && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.phone.message}</p>}
+                        {errors.phone && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.phone.message}</p>}
                       </div>
-                    </div>
-                  </div>
+                    </motion.div>
+                  )}
 
-                  {/* Financial Section */}
-                  <div className="space-y-4 pt-4 border-t border-white/[0.04]">
-                    <h3 className="text-[11px] font-bold text-cyan-400 font-mono uppercase tracking-widest border-l-2 border-cyan-500 pl-2">Financial Matrix</h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Step 2: Employment */}
+                  {step === 2 && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                      <h3 className="text-xs font-bold text-cyan-400 font-mono uppercase tracking-wider">Step 2: Employment & Income</h3>
+                      
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-mono uppercase text-slate-400">Annual Income ($)</label>
-                        <input
-                          type="number"
-                          step="any"
-                          {...register("income", { valueAsNumber: true })}
-                          className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                        />
-                        {errors.income && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.income.message}</p>}
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-mono uppercase text-slate-400">Employment Status</label>
+                        <label className="text-[10px] font-mono uppercase text-slate-400">Employment Status</label>
                         <select
                           {...register("employment_status")}
-                          className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500/50"
+                          className="w-full bg-[#030712]/60 border border-white/[0.06] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/50 cursor-pointer"
                         >
-                          <option value="employed">Employed</option>
+                          <option value="employed">Employed (Full-Time)</option>
+                          <option value="self_employed">Self-Employed</option>
                           <option value="unemployed">Unemployed</option>
-                          <option value="self_employed">Self Employed</option>
                           <option value="retired">Retired</option>
                         </select>
+                        {errors.employment_status && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.employment_status.message}</p>}
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-mono uppercase text-slate-400">Job Duration (Months)</label>
+                        <label className="text-[10px] font-mono uppercase text-slate-400">Employment Duration (Months)</label>
                         <input
                           type="number"
                           {...register("employment_duration_months", { valueAsNumber: true })}
-                          className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
+                          className="w-full bg-[#030712]/60 border border-white/[0.06] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/50"
                         />
-                        {errors.employment_duration_months && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.employment_duration_months.message}</p>}
+                        {errors.employment_duration_months && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.employment_duration_months.message}</p>}
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-mono uppercase text-slate-400">DTI Ratio</label>
+                        <label className="text-[10px] font-mono uppercase text-slate-400">Annual Base Income ($)</label>
                         <input
                           type="number"
-                          step="any"
-                          {...register("debt_to_income_ratio", { valueAsNumber: true })}
-                          className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
+                          {...register("income", { valueAsNumber: true })}
+                          className="w-full bg-[#030712]/60 border border-white/[0.06] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/50"
                         />
-                        {errors.debt_to_income_ratio && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.debt_to_income_ratio.message}</p>}
+                        {errors.income && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.income.message}</p>}
                       </div>
+                    </motion.div>
+                  )}
 
+                  {/* Step 3: Assets & Liabilities */}
+                  {step === 3 && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                      <h3 className="text-xs font-bold text-cyan-400 font-mono uppercase tracking-wider">Step 3: Assets & Liabilities</h3>
+                      
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-mono uppercase text-slate-400">Payment Score (%)</label>
+                        <label className="text-[10px] font-mono uppercase text-slate-400">Savings Account Balance ($)</label>
                         <input
                           type="number"
-                          step="any"
-                          {...register("payment_history_score", { valueAsNumber: true })}
-                          className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                        />
-                        {errors.payment_history_score && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.payment_history_score.message}</p>}
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-mono uppercase text-slate-400">Savings Balance ($)</label>
-                        <input
-                          type="number"
-                          step="any"
                           {...register("savings_balance", { valueAsNumber: true })}
-                          className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
+                          className="w-full bg-[#030712]/60 border border-white/[0.06] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/50"
                         />
-                        {errors.savings_balance && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.savings_balance.message}</p>}
+                        {errors.savings_balance && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.savings_balance.message}</p>}
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-mono uppercase text-slate-400">Existing Loans Count</label>
+                        <label className="text-[10px] font-mono uppercase text-slate-400">Total Outstanding Liabilities / Debt ($)</label>
+                        <input
+                          type="number"
+                          {...register("total_debt", { valueAsNumber: true })}
+                          className="w-full bg-[#030712]/60 border border-white/[0.06] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/50"
+                        />
+                        {errors.total_debt && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.total_debt.message}</p>}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-mono uppercase text-slate-400">Debt-To-Income Ratio (DTI)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          {...register("debt_to_income_ratio", { valueAsNumber: true })}
+                          className="w-full bg-[#030712]/60 border border-white/[0.06] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/50"
+                        />
+                        {errors.debt_to_income_ratio && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.debt_to_income_ratio.message}</p>}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Step 4: Credit Score */}
+                  {step === 4 && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                      <h3 className="text-xs font-bold text-cyan-400 font-mono uppercase tracking-wider">Step 4: Credit History</h3>
+                      
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-mono uppercase text-slate-400">Bureau Payment History Score (0 - 100)</label>
+                        <input
+                          type="number"
+                          {...register("payment_history_score", { valueAsNumber: true })}
+                          className="w-full bg-[#030712]/60 border border-white/[0.06] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/50"
+                        />
+                        {errors.payment_history_score && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.payment_history_score.message}</p>}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-mono uppercase text-slate-400">Active / Existing Loan Count</label>
                         <input
                           type="number"
                           {...register("existing_loans_count", { valueAsNumber: true })}
-                          className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
+                          className="w-full bg-[#030712]/60 border border-white/[0.06] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/50"
                         />
-                        {errors.existing_loans_count && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.existing_loans_count.message}</p>}
+                        {errors.existing_loans_count && <p className="text-[9px] font-mono text-red-400 mt-0.5">{errors.existing_loans_count.message}</p>}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Step 5: Review & Submit */}
+                  {step === 5 && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
+                      <h3 className="text-xs font-bold text-cyan-400 font-mono uppercase tracking-wider">Step 5: Review & Submit</h3>
+                      
+                      <div className="p-4 bg-white/[0.01] border border-white/[0.03] rounded-2xl grid grid-cols-2 gap-4 text-xs font-sans">
+                        <div>
+                          <span className="text-[9px] font-mono text-slate-500 uppercase block">Applicant</span>
+                          <span className="font-semibold text-slate-200">{getValues("first_name")} {getValues("last_name")}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] font-mono text-slate-500 uppercase block">Income</span>
+                          <span className="font-semibold text-slate-200">${Number(getValues("income")).toLocaleString()}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] font-mono text-slate-500 uppercase block">DTI Ratio</span>
+                          <span className="font-semibold text-slate-200">{(Number(getValues("debt_to_income_ratio")) * 100).toFixed(0)}%</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] font-mono text-slate-500 uppercase block">Payment Score</span>
+                          <span className="font-semibold text-slate-200">{getValues("payment_history_score")}/100</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] font-mono text-slate-500 uppercase block">Savings</span>
+                          <span className="font-semibold text-slate-200">${Number(getValues("savings_balance")).toLocaleString()}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] font-mono text-slate-500 uppercase block">Loans</span>
+                          <span className="font-semibold text-slate-200">{getValues("existing_loans_count")} Active</span>
+                        </div>
                       </div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-mono uppercase text-slate-400">Total Outstanding Debt ($)</label>
-                        <input
-                          type="number"
-                          step="any"
-                          {...register("total_debt", { valueAsNumber: true })}
-                          className="w-full bg-[#070913]/60 border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                        />
-                        {errors.total_debt && <p className="text-[10px] font-mono text-red-400 mt-0.5">{errors.total_debt.message}</p>}
+                      <div className="flex items-center gap-2 p-3 bg-cyan-500/5 border border-cyan-500/10 text-cyan-400 rounded-xl text-[10px]">
+                        <Sparkles className="w-4 h-4 shrink-0" />
+                        <span>ML classification structures will run ensemble default risks instantly.</span>
                       </div>
-                    </div>
-                  </div>
+                    </motion.div>
+                  )}
 
-                  <div className="flex justify-end gap-3 pt-6 border-t border-white/[0.04] items-center">
-                    <Magnetic strength={0.25} scale={1.03}>
+                  {/* Form Footer Action Navigation Buttons */}
+                  <div className="flex items-center justify-between border-t border-white/[0.04] pt-6 mt-6">
+                    {step > 1 ? (
+                      <button
+                        type="button"
+                        onClick={handlePrevStep}
+                        className="px-4 py-2 bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] rounded-xl text-slate-400 hover:text-white transition-all text-xs font-mono uppercase tracking-wider cursor-pointer flex items-center gap-1.5"
+                      >
+                        <ChevronLeft className="w-4 h-4" /> Previous
+                      </button>
+                    ) : (
                       <button
                         type="button"
                         onClick={() => {
                           reset();
                           setResult(null);
+                          setStep(1);
                         }}
-                        className="bg-white/[0.02] hover:bg-white/[0.06] text-slate-400 border border-white/[0.04] rounded-xl px-4 py-2.5 text-xs font-mono uppercase tracking-wider transition-colors cursor-pointer"
+                        className="px-4 py-2 bg-white/[0.01] hover:bg-white/[0.03] border border-white/[0.02] rounded-xl text-slate-500 hover:text-slate-300 transition-all text-xs font-mono uppercase tracking-wider cursor-pointer"
                       >
-                        <span data-magnetic-inner>Reset Form</span>
+                        Reset Form
                       </button>
-                    </Magnetic>
-                    
-                    <Magnetic strength={0.35} scale={1.04}>
+                    )}
+
+                    {step < totalSteps ? (
+                      <button
+                        type="button"
+                        onClick={handleNextStep}
+                        className="px-4 py-2 bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] text-cyan-400 hover:text-white rounded-xl text-xs font-mono uppercase tracking-wider cursor-pointer flex items-center gap-1.5"
+                      >
+                        Next Step <ChevronRight className="w-4 h-4" />
+                      </button>
+                    ) : (
                       <button
                         type="submit"
                         disabled={calculating}
                         className="bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 font-mono text-xs uppercase tracking-wider rounded-xl px-5 py-2.5 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 shadow-md animate-pulse-glow"
                       >
                         {calculating ? (
-                          <RefreshCw className="w-4 h-4 animate-spin" data-magnetic-inner />
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                         ) : (
-                          <span data-magnetic-inner>Run Risk Calculation</span>
+                          <span>Submit & Decision</span>
                         )}
                       </button>
-                    </Magnetic>
+                    )}
                   </div>
+
                 </form>
-              </GlassCard>
+              </div>
             </div>
 
             {/* Results Side */}
-            <div className="lg:col-span-1 space-y-6">
+            <div className="lg:col-span-5 space-y-6">
               {error && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-2xl text-xs font-mono text-center">
+                <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-2xl text-xs font-mono text-center leading-relaxed">
                   {error}
                 </div>
               )}
@@ -418,314 +569,333 @@ export const Predict: React.FC = () => {
               {!result && !calculating && (
                 <div className="flex flex-col items-center justify-center border border-white/[0.04] rounded-3xl p-12 text-center h-[350px] bg-white/[0.01]">
                   <Calculator className="w-10 h-10 text-slate-600 mb-4" />
-                  <h3 className="text-slate-400 text-xs font-bold font-mono uppercase tracking-wider">Calculator Idle</h3>
-                  <p className="text-[11px] text-slate-500 mt-2 max-w-[200px] leading-relaxed">
-                    Fill out the assessment form and trigger calculations to see default probability scores.
+                  <h3 className="text-slate-400 text-xs font-bold font-mono uppercase tracking-wider">Awaiting Decision</h3>
+                  <p className="text-[10px] text-slate-500 mt-2 max-w-[200px] leading-relaxed">
+                    Complete the application form wizard steps and submit to generate risk mapping.
                   </p>
                 </div>
               )}
 
               {calculating && (
                 <div className="flex flex-col items-center justify-center border border-white/[0.04] rounded-3xl p-12 text-center h-[350px] bg-white/[0.01] space-y-4">
-                  <RefreshCw className="w-8 h-8 text-cyan-400 animate-spin" />
-                  <p className="text-xs font-mono text-slate-500 animate-pulse">PROCESSING DATA STRUCTURES...</p>
+                  <RefreshCw className="w-7 h-7 text-cyan-400 animate-spin" />
+                  <p className="text-[10px] font-mono text-slate-500 animate-pulse uppercase tracking-widest">Running neural ensembles...</p>
                 </div>
               )}
 
+              {/* Redesigned AI prediction report result */}
               {result && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
+                  initial={{ opacity: 0, scale: 0.96 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.4 }}
                   className="space-y-6"
                 >
-                  {/* Score & recommendation */}
-                  <GlassCard glowColor={result.recommendation === "Approve" ? "green" : "red"} className="border border-white/[0.04]">
-                    <div className="text-center space-y-4">
-                      <span className="text-[9px] text-slate-500 font-mono uppercase tracking-widest font-bold block">
-                        Calculation output ({result.model_name})
-                      </span>
+                  <div className="p-6 md:p-8 rounded-3xl glass-panel border-white/[0.04] relative overflow-hidden">
+                    
+                    {/* Header operations controls */}
+                    <div className="flex items-center justify-between border-b border-white/[0.04] pb-4 mb-6">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4.5 h-4.5 text-cyan-400" />
+                        <span className="text-[10px] font-mono text-slate-300 uppercase tracking-widest font-bold">Credit Intel Audit Report</span>
+                      </div>
                       
-                      <div className="flex justify-center items-center py-2">
-                        <div className="relative w-36 h-36 flex flex-col items-center justify-center rounded-full border border-white/[0.04] bg-[#020308]/60 shadow-inner">
+                      <div className="flex items-center gap-1">
+                        <button 
+                          onClick={handlePrint}
+                          className="p-1.5 hover:bg-white/5 rounded text-slate-400 hover:text-white transition-colors"
+                          title="Print Report"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Gauge Meter & recommendation */}
+                    <div className="text-center space-y-4">
+                      
+                      {/* Interactive ring gauge */}
+                      <div className="flex justify-center items-center py-2 relative">
+                        
+                        <div className="w-36 h-36 rounded-full border border-white/[0.04] bg-[#030712]/80 flex flex-col items-center justify-center shadow-2xl relative">
                           <span className="text-4xl font-extrabold text-white font-mono">{result.credit_score}</span>
-                          <span className="text-[9px] text-slate-500 font-mono mt-0.5 tracking-wider">CREDIT SCORE</span>
+                          <span className="text-[8px] text-slate-500 font-mono mt-0.5 tracking-widest uppercase">FICO Score</span>
+                          
+                          {/* Radial border overlay showing default probability */}
+                          <div 
+                            className={`absolute inset-0 rounded-full border-2 ${
+                              result.recommendation === "Approve" ? "border-emerald-500/30" : "border-red-500/30"
+                            }`} 
+                          />
                         </div>
+
                       </div>
 
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         <div className={`mx-auto w-32 border py-1 rounded-full text-[10px] font-mono font-bold text-center uppercase ${getRiskColor(result.risk_category)}`}>
                           {result.risk_category} Risk
                         </div>
-                        <p className="text-[11px] text-slate-400 mt-2">
-                          Default probability: <span className="font-mono font-semibold text-white">{(result.default_probability * 100).toFixed(2)}%</span>
+                        <p className="text-[11px] text-slate-400">
+                          Forecast Default Risk: <span className="font-mono font-semibold text-white">{(result.default_probability * 100).toFixed(2)}%</span>
                         </p>
                       </div>
 
-                      <div className="border-t border-white/[0.04] pt-4 flex flex-col items-center">
-                        <span className="text-[9px] text-slate-500 font-mono uppercase tracking-widest">Underwriting decision</span>
-                        <h4 className={`text-2xl font-black uppercase mt-1 tracking-wider ${
-                          result.recommendation === "Approve" ? "text-cyan-400" : "text-red-400"
-                        }`}>
-                          {result.recommendation}D
-                        </h4>
-                        <p className="text-[9px] text-slate-500 mt-1 font-mono">
-                          Confidence Score: {(result.confidence_score * 100).toFixed(1)}%
-                        </p>
+                      {/* Underwriting Recommendation */}
+                      <div className="border-y border-white/[0.04] py-4 my-4 flex justify-between items-center px-2">
+                        <div className="text-left">
+                          <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider block">Bureau Status</span>
+                          <h4 className={`text-xl font-bold uppercase mt-1 tracking-wider ${
+                            result.recommendation === "Approve" ? "text-emerald-400" : "text-red-400"
+                          }`}>
+                            {result.recommendation === "Approve" ? "Approved" : "Rejected"}
+                          </h4>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider block">Decision Conf</span>
+                          <span className="font-mono text-slate-200 text-sm font-semibold">{(result.confidence_score * 100).toFixed(1)}%</span>
+                        </div>
                       </div>
+
                     </div>
-                  </GlassCard>
 
-                  {/* Fraud Warnings */}
-                  {result.fraud_flags && result.fraud_flags.length > 0 && (
-                    <GlassCard glowColor="red" className="border-red-950/40">
-                      <h3 className="text-xs font-bold text-red-400 flex items-center gap-1.5 uppercase font-mono tracking-wider mb-3">
-                        <AlertTriangle className="w-4 h-4" /> Security fraud warnings ({result.fraud_flags.length})
-                      </h3>
-                      <ul className="text-[11px] text-red-200/80 space-y-2 list-disc pl-4 font-sans leading-relaxed">
-                        {result.fraud_flags.map((flag: string, i: number) => (
-                          <li key={i}>{flag}</li>
-                        ))}
-                      </ul>
-                    </GlassCard>
-                  )}
+                    {/* Fraud Flags warning blocks */}
+                    {result.fraud_flags && result.fraud_flags.length > 0 && (
+                      <div className="p-4 rounded-2xl bg-red-500/5 border border-red-500/10 mb-6">
+                        <h3 className="text-[10px] font-bold text-red-400 flex items-center gap-1.5 uppercase font-mono tracking-wider mb-2">
+                          <AlertOctagon className="w-3.5 h-3.5" /> Security Fraud warnings ({result.fraud_flags.length})
+                        </h3>
+                        <ul className="text-[10px] text-red-200/70 space-y-1 list-disc pl-4 font-sans">
+                          {result.fraud_flags.map((flag: string, i: number) => (
+                            <li key={i}>{flag}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
-                  {/* Suggestions */}
-                  <GlassCard className="border border-white/[0.04]">
-                    <h3 className="text-xs font-bold text-white flex items-center gap-1.5 uppercase font-mono tracking-wider mb-3">
-                      <ShieldCheck className="w-4 h-4 text-cyan-400" /> Score optimization plan
-                    </h3>
-                    <ul className="text-[11px] text-slate-300 space-y-3 font-sans leading-normal">
-                      {result.suggestions.map((sug: string, i: number) => (
-                        <li key={i} className="flex gap-2">
-                          <span className="text-cyan-400 font-bold font-mono">[{i+1}]</span>
-                          <span>{sug}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </GlassCard>
-
-                  {/* Local SHAP Waterfall */}
-                  {result.shap_explanations && result.shap_explanations.length > 0 && (
-                    <GlassCard className="border border-white/[0.04]">
-                      <h3 className="text-xs font-bold text-white flex items-center gap-1.5 uppercase font-mono tracking-wider mb-4">
-                        <BarChart2 className="w-4 h-4 text-cyan-400" /> SHAP Feature Impact
+                    {/* Positive & negative drivers */}
+                    <div className="space-y-4 my-6">
+                      <h3 className="text-[10px] font-bold text-slate-300 uppercase font-mono tracking-wider border-b border-white/[0.04] pb-2">
+                        Audit Risk Drivers
                       </h3>
                       
-                      <div className="space-y-3">
-                        {result.shap_explanations.map((item: any, i: number) => {
-                          const isPositive = item.shap_value > 0;
-                          const absVal = Math.min(100, Math.abs(item.shap_value) * 300);
-                          
-                          return (
-                            <div key={i} className="space-y-1 text-xs">
-                              <div className="flex justify-between font-mono text-[9px] text-slate-400">
-                                <span>{item.feature}</span>
-                                <span className={isPositive ? "text-red-400" : "text-emerald-400 font-semibold"}>
-                                  {isPositive ? "+" : ""}{item.shap_value.toFixed(3)}
-                                </span>
+                      {/* Positive (decreases risk) */}
+                      {positiveDrivers.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-[9px] font-mono text-emerald-400 uppercase tracking-widest flex items-center gap-1">
+                            <ThumbsUp className="w-3 h-3" /> Favorable Indicators
+                          </span>
+                          <div className="space-y-1.5">
+                            {positiveDrivers.slice(0, 3).map((d: any, idx: number) => (
+                              <div key={idx} className="flex justify-between items-center text-[10px] bg-emerald-500/[0.02] border border-emerald-500/5 p-2 rounded-lg text-slate-300">
+                                <span>{d.feature.replace(/_/g, " ")}</span>
+                                <span className="font-mono text-emerald-400 font-bold">{d.shap_value.toFixed(3)}</span>
                               </div>
-                              
-                              <div className="w-full h-1.5 bg-[#0b0f19] border border-white/[0.04] rounded-full overflow-hidden flex">
-                                {!isPositive ? (
-                                  <div className="flex-1 flex justify-end">
-                                    <div 
-                                      className="h-full bg-emerald-500 rounded-l-full" 
-                                      style={{ width: `${absVal}%` }}
-                                    />
-                                  </div>
-                                ) : (
-                                  <div className="flex-1" />
-                                )}
-                                
-                                <div className="w-0.5 h-full bg-slate-700" />
-                                
-                                {isPositive ? (
-                                  <div className="flex-1 flex justify-start">
-                                    <div 
-                                      className="h-full bg-red-500 rounded-r-full" 
-                                      style={{ width: `${absVal}%` }}
-                                    />
-                                  </div>
-                                ) : (
-                                  <div className="flex-1" />
-                                )}
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Negative (increases risk) */}
+                      {negativeDrivers.length > 0 && (
+                        <div className="space-y-2 pt-2">
+                          <span className="text-[9px] font-mono text-red-400 uppercase tracking-widest flex items-center gap-1">
+                            <ThumbsDown className="w-3 h-3" /> Adverse Risk Indicators
+                          </span>
+                          <div className="space-y-1.5">
+                            {negativeDrivers.slice(0, 3).map((d: any, idx: number) => (
+                              <div key={idx} className="flex justify-between items-center text-[10px] bg-red-500/[0.02] border border-red-500/5 p-2 rounded-lg text-slate-300">
+                                <span className="capitalize">{d.feature.replace(/_/g, " ")}</span>
+                                <span className="font-mono text-red-400 font-bold">+{d.shap_value.toFixed(3)}</span>
                               </div>
-                            </div>
-                          );
-                        })}
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Suggestions optimization timeline guidelines */}
+                    <div className="space-y-3 pt-4 border-t border-white/[0.04]">
+                      <h3 className="text-[10px] font-bold text-slate-300 uppercase font-mono tracking-wider">
+                        Rehabilitation Guidelines
+                      </h3>
+                      <div className="relative border-l border-white/5 pl-4 space-y-4 text-[10px] text-slate-400">
+                        {result.suggestions.map((sug: string, idx: number) => (
+                          <div key={idx} className="relative">
+                            <span className="absolute -left-[20px] top-0.5 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.8)]" />
+                            <p className="font-semibold text-slate-300 font-mono text-[9px] uppercase">Plan phase {idx + 1}</p>
+                            <p className="mt-1 leading-normal">{sug}</p>
+                          </div>
+                        ))}
                       </div>
-                      <p className="text-[8px] text-slate-500 mt-4 font-mono text-center uppercase tracking-wider">
-                        Red: Increases default risk  |  Green: Lowers default risk
-                      </p>
-                    </GlassCard>
-                  )}
+                    </div>
+
+                  </div>
                 </motion.div>
               )}
             </div>
+
           </motion.div>
         ) : (
-          /* Bulk Tab */
+          /* Bulk Tab Redesign */
           <motion.div
             key="bulk"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+            className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
           >
-            <div className="lg:col-span-1">
-              <GlassCard className="border border-white/[0.04]">
+            <div className="lg:col-span-4">
+              <div className="p-6 md:p-8 rounded-3xl glass-panel border-white/[0.04]">
                 <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2 border-b border-white/[0.04] pb-3">
-                  <Upload className="w-4.5 h-4.5 text-cyan-400" /> Batch CSV Upload
+                  <Upload className="w-4.5 h-4.5 text-cyan-400" /> Batch Processing Console
                 </h2>
                 
-                <div className="bg-[#070913]/60 border border-white/[0.06] p-4 rounded-2xl mb-6 space-y-2.5 text-[11px] text-slate-300 leading-relaxed font-sans">
-                  <h3 className="font-bold text-cyan-400 font-mono uppercase tracking-wider">CSV Template Format</h3>
-                  <p>Upload a CSV file containing headers matching exactly these features:</p>
-                  <div className="bg-[#0b0f19] p-2.5 rounded-xl border border-white/[0.04] font-mono text-[9px] text-slate-400 leading-normal select-all">
+                <div className="bg-[#030712] border border-white/[0.06] p-4.5 rounded-2xl mb-6 space-y-3 text-[10px] text-slate-400 leading-relaxed font-sans">
+                  <h3 className="font-bold text-cyan-400 font-mono uppercase tracking-wider">CSV Data Template Schema</h3>
+                  <p>Incorporate the exact features in your CSV headers:</p>
+                  <div className="bg-black/40 p-2.5 rounded-xl border border-white/[0.04] font-mono text-[8px] text-slate-400 leading-normal select-all break-all">
                     income, employment_status, employment_duration_months, debt_to_income_ratio, payment_history_score, existing_loans_count, total_debt, savings_balance
                   </div>
-                  <p className="text-slate-500 font-mono text-[10px]">
-                    * Maximum file size limit is 5MB.
+                  <p className="text-slate-500 font-mono text-[9px] leading-normal">
+                    * Fits standardized CatBoost schemas. Max file size: 5MB.
                   </p>
                 </div>
 
                 <form onSubmit={handleBulkUpload} className="space-y-4">
-                  <div className="border border-dashed border-white/[0.06] rounded-2xl p-8 flex flex-col items-center justify-center bg-[#070913]/20 hover:bg-[#070913]/40 transition-colors">
-                    <Upload className="w-8 h-8 text-cyan-400 mb-3" />
+                  <div className="border border-dashed border-white/[0.06] rounded-2xl p-8 flex flex-col items-center justify-center bg-white/[0.01] hover:bg-white/[0.02] transition-colors relative cursor-pointer group">
                     <input
                       type="file"
+                      id="csv-file-selector"
                       accept=".csv"
                       onChange={handleFileChange}
-                      className="hidden"
-                      id="csv-file-picker"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
-                    <label htmlFor="csv-file-picker" className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer font-bold font-mono uppercase tracking-wider">
-                      {csvFile ? csvFile.name : "Select CSV Spreadsheet"}
-                    </label>
-                    {csvFile && (
-                      <p className="text-[10px] text-slate-500 mt-1.5 font-mono">
-                        Size: {(csvFile.size / 1024).toFixed(1)} KB
-                      </p>
-                    )}
+                    <Upload className="w-8 h-8 text-cyan-400 mb-3 group-hover:scale-105 transition-transform" />
+                    <span className="text-xs font-medium text-slate-300">
+                      {csvFile ? csvFile.name : "Select CSV file"}
+                    </span>
+                    <span className="text-[9px] text-slate-500 mt-1 font-mono uppercase">
+                      {csvFile ? `${(csvFile.size / 1024).toFixed(1)} KB` : "Drag and drop or browse"}
+                    </span>
                   </div>
 
-                  {bulkError && (
-                    <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-3 rounded-2xl text-xs text-center font-mono">
-                      {bulkError}
-                    </div>
-                  )}
-
-                  <Magnetic className="w-full" strength={0.35} scale={1.04}>
-                    <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
-                      type="submit"
-                      disabled={bulkUploading || !csvFile}
-                      className="w-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 font-mono text-xs uppercase tracking-wider rounded-xl px-4 py-3 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      {bulkUploading ? (
-                        <RefreshCw className="w-4 h-4 animate-spin" data-magnetic-inner />
-                      ) : (
-                        <span data-magnetic-inner>Process Batch Run</span>
-                      )}
-                    </motion.button>
-                  </Magnetic>
+                  <button
+                    type="submit"
+                    disabled={bulkUploading || !csvFile}
+                    className="w-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 font-mono text-xs uppercase tracking-wider rounded-xl py-3 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-40"
+                  >
+                    {bulkUploading ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <span>Run Batch Predict</span>
+                    )}
+                  </button>
                 </form>
-              </GlassCard>
+              </div>
             </div>
 
-            <div className="lg:col-span-2">
+            {/* Bulk result panel */}
+            <div className="lg:col-span-8 space-y-6">
+              {bulkError && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-2xl text-xs font-mono text-center">
+                  {bulkError}
+                </div>
+              )}
+
               {!bulkResult && !bulkUploading && (
                 <div className="flex flex-col items-center justify-center border border-white/[0.04] rounded-3xl p-12 text-center h-[350px] bg-white/[0.01]">
-                  <FileText className="w-10 h-10 text-slate-600 mb-4" />
-                  <h3 className="text-slate-400 text-xs font-bold font-mono uppercase tracking-wider">Batch Processing Idle</h3>
-                  <p className="text-[11px] text-slate-500 mt-2 max-w-[250px] leading-relaxed">
-                    Select and run a CSV spreadsheet file to perform batch calculations across multiple client parameters.
+                  <FileClock className="w-10 h-10 text-slate-600 mb-4" />
+                  <h3 className="text-slate-400 text-xs font-bold font-mono uppercase tracking-wider">Queue Awaiting Upload</h3>
+                  <p className="text-[10px] text-slate-500 mt-2 max-w-[220px] leading-relaxed">
+                    Upload a batch CSV file to view statistical distribution curves and predict classifications.
                   </p>
                 </div>
               )}
 
               {bulkUploading && (
                 <div className="flex flex-col items-center justify-center border border-white/[0.04] rounded-3xl p-12 text-center h-[350px] bg-white/[0.01] space-y-4">
-                  <RefreshCw className="w-8 h-8 text-cyan-400 animate-spin" />
-                  <p className="text-xs font-mono text-slate-500 animate-pulse">EXTRACTING CSV DATA STRUCTURES...</p>
+                  <RefreshCw className="w-7 h-7 text-cyan-400 animate-spin" />
+                  <p className="text-[10px] font-mono text-slate-500 animate-pulse">CLASSIFYING BATCH ROWS...</p>
                 </div>
               )}
 
               {bulkResult && (
-                <GlassCard className="space-y-6 border border-white/[0.04]">
-                  <h2 className="text-sm font-semibold text-white uppercase font-mono tracking-wider border-b border-white/[0.04] pb-4 flex justify-between items-center">
-                    <span>Batch Output Summary</span>
-                    <span className="text-xs text-cyan-400">{bulkResult.model_name}</span>
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-6 md:p-8 rounded-3xl glass-panel border-white/[0.04] space-y-6"
+                >
+                  <h2 className="text-sm font-semibold text-white flex items-center gap-2 border-b border-white/[0.04] pb-3 mb-4">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Batch calculation complete
                   </h2>
 
-                  {/* mini statistics */}
                   <div className="grid grid-cols-3 gap-4 text-center">
-                    <div className="bg-[#070913]/60 border border-white/[0.04] p-3 rounded-2xl">
-                      <span className="text-[10px] text-slate-500 font-mono uppercase">Total Rows</span>
-                      <h4 className="text-xl font-bold text-white mt-1 font-mono">{bulkResult.total_records}</h4>
+                    <div className="bg-white/[0.01] border border-white/[0.03] p-4 rounded-2xl">
+                      <span className="text-[8px] font-mono text-slate-500 uppercase tracking-wider">Processed Rows</span>
+                      <p className="text-2xl font-bold text-white mt-1 font-mono">{bulkResult.total_records}</p>
                     </div>
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl text-emerald-400">
-                      <span className="text-[10px] text-emerald-500/60 font-mono uppercase">Approvals</span>
-                      <h4 className="text-xl font-bold text-emerald-400 mt-1 font-mono">{bulkResult.approvals}</h4>
+                    <div className="bg-emerald-500/5 border border-emerald-500/10 p-4 rounded-2xl">
+                      <span className="text-[8px] font-mono text-emerald-500 uppercase tracking-wider">Approved</span>
+                      <p className="text-2xl font-bold text-emerald-400 mt-1 font-mono">{bulkResult.approved_count}</p>
                     </div>
-                    <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-2xl text-red-400">
-                      <span className="text-[10px] text-red-500/60 font-mono uppercase">Rejections</span>
-                      <h4 className="text-xl font-bold text-red-400 mt-1 font-mono">{bulkResult.rejections}</h4>
+                    <div className="bg-red-500/5 border border-red-500/10 p-4 rounded-2xl">
+                      <span className="text-[8px] font-mono text-red-500 uppercase tracking-wider">Rejected</span>
+                      <p className="text-2xl font-bold text-red-400 mt-1 font-mono">{bulkResult.rejected_count}</p>
                     </div>
                   </div>
 
-                  {/* Table details */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/[0.04] text-[10px] font-mono uppercase text-slate-500">
-                          <th className="py-2.5 px-3 text-center">Row</th>
-                          <th className="py-2.5 px-3">Applicant</th>
-                          <th className="py-2.5 px-3 text-center">FICO</th>
-                          <th className="py-2.5 px-3 text-center">Risk Tier</th>
-                          <th className="py-2.5 px-3 text-center">Default Prob</th>
-                          <th className="py-2.5 px-3 text-center">Recommendation</th>
-                          <th className="py-2.5 px-3 text-right">Fraud Flags</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/[0.02]">
-                        {bulkResult.predictions.map((p: any, i: number) => (
-                          <tr key={i} className="hover:bg-white/[0.01]">
-                            <td className="py-3 px-3 text-center font-mono text-slate-500">{p.row_index + 1}</td>
-                            <td className="py-3 px-3 font-semibold text-slate-200">{p.customer_name}</td>
-                            <td className="py-3 px-3 text-center font-mono text-slate-300">{p.credit_score}</td>
-                            <td className="py-3 px-3 text-center">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${getRiskColor(p.risk_category)}`}>
-                                {p.risk_category}
-                              </span>
-                            </td>
-                            <td className="py-3 px-3 text-center font-mono text-slate-300">{(p.default_probability * 100).toFixed(1)}%</td>
-                            <td className="py-3 px-3 text-center">
-                              <span className={`font-mono font-bold ${p.recommendation === "Approve" ? "text-cyan-400" : "text-red-400"}`}>
-                                {p.recommendation.toUpperCase()}
-                              </span>
-                            </td>
-                            <td className="py-3 px-3 text-right">
-                              {p.fraud_alerts_count > 0 ? (
-                                <span className="text-red-400 font-bold font-mono">🚨 {p.fraud_alerts_count} Flagged</span>
-                              ) : (
-                                <span className="text-slate-500 font-mono">Clean</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </GlassCard>
+                  {/* Bulk previews list table */}
+                  {bulkResult.results && bulkResult.results.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-[10px] font-bold text-slate-300 uppercase font-mono tracking-wider">Preview results</h3>
+                      <div className="overflow-x-auto border border-white/[0.04] rounded-xl">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-white/[0.01] border-b border-white/[0.04] text-[8px] font-mono text-slate-500 uppercase">
+                              <th className="p-2.5">Row ID</th>
+                              <th className="p-2.5 text-center">FICO Score</th>
+                              <th className="p-2.5 text-center">Risk Tier</th>
+                              <th className="p-2.5 text-center">Probability</th>
+                              <th className="p-2.5 text-right">Result</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/[0.02] font-mono text-[10px]">
+                            {bulkResult.results.slice(0, 10).map((row: any, idx: number) => (
+                              <tr key={idx} className="hover:bg-white/[0.01] transition-colors">
+                                <td className="p-2.5 text-slate-400">#{idx + 1}</td>
+                                <td className="p-2.5 text-center text-slate-200">{row.credit_score}</td>
+                                <td className="p-2.5 text-center">
+                                  <span className={`px-2 py-0.2 rounded text-[8px] ${getRiskColor(row.risk_category)}`}>
+                                    {row.risk_category}
+                                  </span>
+                                </td>
+                                <td className="p-2.5 text-center text-slate-200">{(row.default_probability * 100).toFixed(1)}%</td>
+                                <td className={`p-2.5 text-right font-bold ${row.recommendation === "Approve" ? "text-emerald-400" : "text-red-400"}`}>
+                                  {row.recommendation.toUpperCase()}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {bulkResult.results.length > 10 && (
+                        <p className="text-[8px] text-slate-500 text-center font-mono">
+                          * SHOWING TOP 10 PREVIEWS OF {bulkResult.results.length} RECORDED ROWS
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                </motion.div>
               )}
             </div>
+
           </motion.div>
         )}
       </AnimatePresence>
+
     </div>
   );
 };
+export default Predict;

@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   Bot, Send, User, RefreshCw, 
-  HelpCircle, ShieldCheck, AlertCircle 
+  HelpCircle, ShieldCheck, AlertCircle, Sparkles,
+  ChevronRight, BrainCircuit, CornerDownLeft
 } from "lucide-react";
 import { apiFetch } from "../utils/api";
-import { GlassCard } from "../components/GlassCard";
 import { motion, AnimatePresence } from "framer-motion";
 import { Magnetic } from "../components/Magnetic";
 
@@ -30,6 +30,8 @@ export const AIAssistant: React.FC = () => {
   ]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const loadCustomers = async () => {
     setLoadingCusts(true);
@@ -46,6 +48,11 @@ export const AIAssistant: React.FC = () => {
   useEffect(() => {
     loadCustomers();
   }, []);
+
+  // Auto-scroll to bottom of chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const handleCustomerSelect = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const cid = e.target.value;
@@ -80,7 +87,7 @@ export const AIAssistant: React.FC = () => {
       setMessages([
         {
           sender: "gemini",
-          text: `### Applicant Profile Loaded: ${profile.first_name} ${profile.last_name}\n\n**Financial Overview:**\n- Annual Income: $${profile.income.toLocaleString()}\n- DTI Ratio: ${(profile.debt_to_income_ratio*100).toFixed(1)}%\n- Credit Score: ${fullCustDetails.credit_score} (${fullCustDetails.risk_category} Risk)\n- System Recommendation: **${fullCustDetails.recommendation.toUpperCase()}**\n\nChoose a quick question below or type a custom command.`,
+          text: `### Applicant Profile Loaded: ${profile.first_name} ${profile.last_name}\n\n**Financial Overview:**\n- Annual Income: $${profile.income.toLocaleString()}\n- DTI Ratio: ${(profile.debt_to_income_ratio*100).toFixed(0)}%\n- Credit Score: ${fullCustDetails.credit_score} (${fullCustDetails.risk_category} Risk)\n- Underwriting Decision: **${fullCustDetails.recommendation.toUpperCase()}**\n\nChoose a quick question below or type a custom command.`,
           timestamp: new Date().toLocaleTimeString(),
         }
       ]);
@@ -170,25 +177,26 @@ export const AIAssistant: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 text-left">
+      
       {/* Header */}
       <div className="border-b border-white/[0.04] pb-6 flex flex-col md:flex-row justify-between md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Bot className="text-cyan-400 w-6 h-6 animate-pulse" /> AI Risk Copilot
+          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2.5">
+            <Bot className="text-cyan-400 w-5 h-5" /> AI Risk Copilot
           </h1>
           <p className="text-slate-500 text-xs mt-1">
-            Query underwriting decisions, generate summaries, and consult Gemini regarding default mitigations
+            Query underwriting decisions, generate summaries, and consult Gemini regarding default mitigations.
           </p>
         </div>
         
-        {/* Profile Selector */}
+        {/* Context Selector */}
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">Context:</span>
+          <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">Context Profile:</span>
           <select
             value={selectedCustId}
             onChange={handleCustomerSelect}
-            className="bg-[#0b0f19] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-cyan-400 font-semibold focus:outline-none"
+            className="bg-[#0b0f19] border border-white/[0.06] rounded-xl px-3 py-1.5 text-xs text-cyan-400 font-semibold focus:outline-none"
             disabled={loadingCusts}
           >
             <option value="">General Inquiries Only</option>
@@ -201,17 +209,18 @@ export const AIAssistant: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
         {/* Left column: Context Profile quick reference */}
-        <div className="lg:col-span-1 space-y-4">
-          <GlassCard className="h-full space-y-5 border border-white/[0.04]">
+        <div className="lg:col-span-3 space-y-4">
+          <div className="p-6 rounded-3xl glass-panel border border-white/[0.04] space-y-5">
             <h3 className="text-xs font-semibold text-white mb-2 border-b border-white/[0.04] pb-3 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-cyan-400" /> Active Context
+              <BrainCircuit className="w-4 h-4 text-cyan-400" /> Model Context
             </h3>
             
             {selectedCust ? (
               <div className="space-y-4 text-xs font-mono">
-                <div className="bg-[#070913]/60 p-3.5 border border-white/[0.05] rounded-2xl space-y-1">
+                <div className="bg-[#030712] p-3.5 border border-white/[0.05] rounded-2xl space-y-1">
                   <p className="text-slate-200 font-bold font-sans text-xs">{selectedCust.first_name} {selectedCust.last_name}</p>
                   <p className="text-slate-500 text-[10px] truncate">{selectedCust.email}</p>
                 </div>
@@ -237,133 +246,143 @@ export const AIAssistant: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-white/[0.04] space-y-2">
-                  <span className="text-[9px] text-slate-500 uppercase font-bold tracking-widest block mb-1">Quick Actions</span>
-                  <Magnetic className="w-full" strength={0.15} scale={1.02}>
-                    <button
-                      onClick={() => handleQuickQuestion("why_rejected")}
-                      className="w-full bg-[#070913]/40 hover:bg-[#070913] border border-white/[0.05] text-left p-2.5 rounded-xl text-[10px] text-slate-300 font-sans hover:text-cyan-400 block cursor-pointer transition-colors"
-                    >
-                      <span data-magnetic-inner>Explain Underwriting Decision</span>
-                    </button>
-                  </Magnetic>
-                  <Magnetic className="w-full" strength={0.15} scale={1.02}>
-                    <button
-                      onClick={() => handleQuickQuestion("improve_score")}
-                      className="w-full bg-[#070913]/40 hover:bg-[#070913] border border-white/[0.05] text-left p-2.5 rounded-xl text-[10px] text-slate-300 font-sans hover:text-cyan-400 block cursor-pointer transition-colors"
-                    >
-                      <span data-magnetic-inner>Roadmap to Optimize Score</span>
-                    </button>
-                  </Magnetic>
-                  <Magnetic className="w-full" strength={0.15} scale={1.02}>
-                    <button
-                      onClick={() => handleQuickQuestion("exec_summary")}
-                      className="w-full bg-[#070913]/40 hover:bg-[#070913] border border-white/[0.05] text-left p-2.5 rounded-xl text-[10px] text-slate-300 font-sans hover:text-cyan-400 block cursor-pointer transition-colors"
-                    >
-                      <span data-magnetic-inner>Compile Executive Summary</span>
-                    </button>
-                  </Magnetic>
+                <div className="pt-4 border-t border-white/[0.04] space-y-2 font-sans">
+                  <span className="text-[9px] text-slate-500 font-mono uppercase font-bold tracking-widest block mb-1">Quick Inquiries</span>
+                  <button
+                    onClick={() => handleQuickQuestion("why_rejected")}
+                    className="w-full bg-white/[0.01] hover:bg-white/[0.03] border border-white/[0.05] text-left p-2.5 rounded-xl text-[10px] text-slate-300 hover:text-cyan-400 block cursor-pointer transition-colors"
+                  >
+                    Explain Underwriting Decision
+                  </button>
+                  <button
+                    onClick={() => handleQuickQuestion("improve_score")}
+                    className="w-full bg-white/[0.01] hover:bg-white/[0.03] border border-white/[0.05] text-left p-2.5 rounded-xl text-[10px] text-slate-300 hover:text-cyan-400 block cursor-pointer transition-colors"
+                  >
+                    Generate Actionable Roadmap
+                  </button>
+                  <button
+                    onClick={() => handleQuickQuestion("exec_summary")}
+                    className="w-full bg-white/[0.01] hover:bg-white/[0.03] border border-white/[0.05] text-left p-2.5 rounded-xl text-[10px] text-slate-300 hover:text-cyan-400 block cursor-pointer transition-colors"
+                  >
+                    Export Executive Summary
+                  </button>
                 </div>
               </div>
             ) : (
-              <div className="text-center py-16 space-y-3">
-                <HelpCircle className="w-8 h-8 text-slate-700 mx-auto" />
-                <p className="text-[11px] text-slate-500 font-sans leading-relaxed">No client context active. Responses will assume general risk modeling values.</p>
+              <div className="text-center py-8 space-y-3">
+                <HelpCircle className="w-8 h-8 text-slate-600 mx-auto" />
+                <p className="text-[10px] font-mono text-slate-500 uppercase">General copilot mode active.</p>
               </div>
             )}
-          </GlassCard>
+          </div>
         </div>
 
-        {/* Right column: Chat window */}
-        <div className="lg:col-span-3 flex flex-col h-[550px]">
-          <GlassCard className="flex-1 flex flex-col p-5 overflow-hidden border border-white/[0.04]">
-            {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4 scrollbar-thin">
-              {messages.map((msg, i) => (
-                <div 
-                  key={i} 
-                  className={`flex gap-3.5 max-w-[85%] ${
-                    msg.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
-                  }`}
-                >
-                  <div className={`p-2 rounded-full h-8 w-8 flex items-center justify-center shrink-0 border ${
-                    msg.sender === "user" 
+        {/* Right column: Chat Console layout */}
+        <div className="lg:col-span-9 flex flex-col h-[520px] rounded-3xl glass-panel border border-white/[0.04] overflow-hidden">
+          
+          {/* Chat Messages flow box */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {messages.map((msg, index) => {
+              const isUser = msg.sender === "user";
+              return (
+                <div key={index} className={`flex gap-3.5 max-w-2xl ${isUser ? "ml-auto flex-row-reverse" : "mr-auto"}`}>
+                  <div className={`w-7.5 h-7.5 rounded-lg flex items-center justify-center shrink-0 border ${
+                    isUser 
                       ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-400" 
-                      : "bg-[#0b0f19] border-white/[0.06] text-white"
+                      : "bg-[#030712] border-white/[0.05] text-slate-400"
                   }`}>
-                    {msg.sender === "user" ? <User className="w-4.5 h-4.5" /> : <Bot className="w-4.5 h-4.5" />}
+                    {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                   </div>
-
-                  <div className={`rounded-2xl px-4 py-3 text-xs leading-relaxed ${
-                    msg.sender === "user" 
-                      ? "bg-[#070913] border border-white/[0.06] text-slate-100 rounded-tr-none" 
-                      : "bg-white/[0.01] border border-white/[0.03] text-slate-300 rounded-tl-none font-sans"
+                  
+                  <div className={`p-4 rounded-2xl text-xs leading-relaxed font-sans ${
+                    isUser 
+                      ? "bg-cyan-500/[0.02] border border-cyan-500/10 text-cyan-100 rounded-tr-none" 
+                      : "bg-white/[0.01] border border-white/[0.03] text-slate-300 rounded-tl-none markdown-container"
                   }`}>
-                    {msg.text.split("\n").map((line, idx) => {
-                      if (line.startsWith("### ")) {
-                        return <h3 key={idx} className="text-xs font-bold text-cyan-400 mt-3 mb-2 font-mono uppercase tracking-wider first:mt-0">{line.replace("### ", "")}</h3>;
-                      }
-                      if (line.startsWith("#### ")) {
-                        return <h4 key={idx} className="text-[11px] font-bold text-white mt-2 mb-1.5 font-mono uppercase tracking-wider">{line.replace("#### ", "")}</h4>;
-                      }
-                      if (line.startsWith("**") && line.endsWith("**")) {
-                        return <p key={idx} className="font-bold text-slate-200 mt-2 font-sans">{line.replace(/\*\*/g, "")}</p>;
-                      }
-                      if (line.startsWith("- ")) {
-                        return <li key={idx} className="ml-4 list-disc text-[11px] mt-1 text-slate-400 font-sans">{line.replace("- ", "")}</li>;
-                      }
-                      return <p key={idx} className="mt-1 font-sans text-slate-300">{line}</p>;
-                    })}
-                    <span className="text-[8px] text-slate-500 font-mono block mt-2 text-right">
-                      {msg.timestamp}
-                    </span>
+                    {/* Basic Markdown converter logic for linebreaks & lists */}
+                    <div className="space-y-2 whitespace-pre-wrap">
+                      {msg.text.split("\n\n").map((para, pIdx) => {
+                        if (para.startsWith("###")) {
+                          return <h4 key={pIdx} className="text-sm font-bold text-white uppercase tracking-wider font-sans mt-2">{para.replace("###", "")}</h4>;
+                        }
+                        if (para.startsWith("-") || para.startsWith("*")) {
+                          return (
+                            <ul key={pIdx} className="list-disc pl-4 space-y-1">
+                              {para.split("\n").map((li, lIdx) => (
+                                <li key={lIdx}>{li.replace(/^[-*]\s*/, "")}</li>
+                              ))}
+                            </ul>
+                          );
+                        }
+                        return <p key={pIdx}>{para}</p>;
+                      })}
+                    </div>
                   </div>
                 </div>
-              ))}
-
-              {sending && (
-                <div className="flex gap-3.5 mr-auto max-w-[85%]">
-                  <div className="p-2 rounded-full h-8 w-8 flex items-center justify-center shrink-0 border bg-[#0b0f19] border-white/[0.06] text-white">
-                    <Bot className="w-4.5 h-4.5" />
-                  </div>
-                  <div className="bg-white/[0.01] border border-white/[0.03] rounded-2xl px-4 py-3 text-[11px] font-mono text-slate-500 animate-pulse rounded-tl-none">
-                    Gemini risk agent is analyzing metrics...
-                  </div>
+              );
+            })}
+            
+            {sending && (
+              <div className="flex gap-3.5 mr-auto">
+                <div className="w-7.5 h-7.5 rounded-lg bg-[#030712] border border-white/[0.05] text-slate-400 flex items-center justify-center shrink-0">
+                  <Bot className="w-4 h-4 animate-spin text-cyan-400" />
                 </div>
-              )}
+                <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/[0.03] text-xs text-slate-500 font-mono animate-pulse">
+                  CONSULTING ENSEMBLE ARTIFACTS...
+                </div>
+              </div>
+            )}
 
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-2xl text-xs flex items-center gap-2 max-w-md mx-auto font-mono">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+            {error && (
+              <div className="flex gap-3.5 max-w-md mx-auto">
+                <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-3 rounded-xl text-[10px] font-mono flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
                   <span>{error}</span>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+            
+            <div ref={chatEndRef} />
+          </div>
 
-            {/* Input field */}
-            <div className="border-t border-white/[0.04] pt-4 flex gap-2.5">
+          {/* Chat input box */}
+          <div className="p-4 bg-black/20 border-t border-white/[0.04]">
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendMessage(inputPrompt);
+              }}
+              className="flex items-center gap-3.5 bg-white/[0.02] border border-white/[0.04] focus-within:border-cyan-500/40 px-4 py-3 rounded-2xl transition-all"
+            >
               <input
                 type="text"
+                placeholder="Ask the AI copilot to explain a risk score or summarize data..."
                 value={inputPrompt}
                 onChange={(e) => setInputPrompt(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSendMessage(inputPrompt)}
-                placeholder="Ask underwriting details, risk assessments, or score explanations..."
-                className="flex-1 bg-[#070913]/60 border border-white/[0.06] rounded-xl px-4 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                 disabled={sending}
+                className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
               />
-              <Magnetic scale={1.1} strength={0.4}>
+              
+              <div className="flex items-center gap-3">
+                <span className="hidden md:flex items-center gap-1 text-[8px] font-mono text-slate-500 uppercase tracking-widest border border-white/5 px-1.5 py-0.5 rounded bg-[#030712]">
+                  <span>Enter</span> <CornerDownLeft className="w-2 h-2" />
+                </span>
                 <button
-                  onClick={() => handleSendMessage(inputPrompt)}
+                  type="submit"
                   disabled={sending || !inputPrompt.trim()}
-                  className="bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 p-2.5 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                  className="p-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 hover:text-white rounded-xl transition-all disabled:opacity-30 cursor-pointer"
                 >
-                  <Send className="w-4 h-4" data-magnetic-inner />
+                  <Send className="w-3.5 h-3.5" />
                 </button>
-              </Magnetic>
-            </div>
-          </GlassCard>
+              </div>
+            </form>
+          </div>
+
         </div>
+
       </div>
+
     </div>
   );
 };
+export default AIAssistant;
