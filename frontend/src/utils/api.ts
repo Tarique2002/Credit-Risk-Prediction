@@ -1,5 +1,6 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? "http://localhost:8000/api" : "https://credit-risk-prediction-xm9b.onrender.com/api");
 
 export const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
