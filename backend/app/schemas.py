@@ -9,7 +9,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, description="Password must be at least 8 characters long")
-    role: Optional[str] = Field("analyst", pattern="^(admin|analyst)$")
+    role: Optional[str] = Field("user", pattern="^(admin|analyst|user)$")
 
     @field_validator("password")
     @classmethod
@@ -51,6 +51,10 @@ class ForgotPasswordRequest(BaseModel):
 
 class PasswordResetRequest(BaseModel):
     token: str
+    new_password: str = Field(..., min_length=8)
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
     new_password: str = Field(..., min_length=8)
 
 # --- CUSTOMER SCHEMAS ---
@@ -96,6 +100,9 @@ class LoanApplicationBase(BaseModel):
 class LoanApplicationCreate(LoanApplicationBase):
     customer_id: int
 
+class LoanApplicationCreateWithoutCustId(LoanApplicationBase):
+    pass
+
 class LoanApplicationResponse(LoanApplicationBase):
     id: int
     customer_id: int
@@ -137,10 +144,10 @@ class PredictionResponse(BaseModel):
     credit_score: int
     risk_category: str  # Very Low, Low, Medium, High, Very High
     recommendation: str  # Approve, Reject
-    confidence_score: float
-    shap_explanations: List[SHAPFeatureExplanation]
-    fraud_flags: List[str]
-    suggestions: List[str]
+    confidence_score: float = 0.0
+    shap_explanations: List[SHAPFeatureExplanation] = []
+    fraud_flags: List[str] = []
+    suggestions: List[str] = []
     created_at: datetime
 
 class CustomerProfileResponse(BaseModel):

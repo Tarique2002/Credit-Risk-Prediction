@@ -155,3 +155,113 @@ def add_loan_application(
         request=request
     )
     return loan
+
+@router.get("/me", response_model=schemas.CustomerProfileResponse)
+def get_my_customer_profile(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Fetches the current logged in user's customer profile, including loan applications and predictions history."""
+    customer = crud.get_customer_by_email(db, current_user.email)
+    if not customer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Borrower profile not found for this user account. Please submit an application first."
+        )
+    loans = crud.get_loans_by_customer(db, customer.id)
+    predictions = crud.get_predictions_by_customer(db, customer.id)
+    
+    import json
+    formatted_preds = []
+    for p in predictions:
+        shaps = []
+        if p.shap_explanations:
+            try:
+                shaps = json.loads(p.shap_explanations)
+            except:
+                pass
+        formatted_preds.append({
+            "customer_id": p.customer_id,
+            "model_name": p.model_name,
+            "default_probability": p.default_probability,
+            "risk_score": p.risk_score,
+            "credit_score": p.credit_score,
+            "risk_category": p.risk_category,
+            "recommendation": p.recommendation,
+            "confidence_score": 1.0 - abs(p.default_probability - 0.5) * 2.0,
+            "shap_explanations": shaps,
+            "created_at": p.created_at
+        })
+        
+    return {
+        "profile": customer,
+        "loans": loans,
+        "predictions": formatted_preds
+    }
+
+@router.put("/me", response_model=schemas.CustomerResponse)
+def update_my_customer_profile(
+    customer_data: schemas.CustomerCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Updates the current logged in user's customer profile."""
+    # Force the email to be the logged in user's email
+    customer_data.email = current_user.email
+    customer = crud.get_customer_by_email(db, current_user.email)
+    if not customer:
+        customer = crud.create_customer(db, customer_data)
+    else:
+        customer = crud.update_customer(db, customer.id, customer_data)
+        
+    log_audit_action(
+        db,
+        action="CUSTOMER_UPDATED",
+        details=f"User {current_user.email} updated their own profile details.",
+        user_id=current_user.id,
+        request=request
+    )
+    return customer
+
+@router.post("/me/loans", response_model=schemas.LoanApplicationResponse, status_code=status.HTTP_201_CREATED)
+def create_my_loan_application(
+    loan_data: schemas.LoanApplicationCreateWithoutCustId,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Registers a new loan application for the logged in user."""
+    customer = crud.get_customer_by_email(db, current_user.email)
+    if not customer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Borrower profile not found. Please submit a credit assessment first."
+        )
+        
+    full_loan_data = schemas.LoanApplicationCreate(
+        customer_id=customer.id,
+        loan_amount=loan_data.loan_amount,
+        loan_purpose=loan_data.loan_purpose,
+        term_months=loan_data.term_months,
+        interest_rate=loan_data.interest_rate
+    )
+    loan = crud.create_loan_application(db, full_loan_data)
+    
+    # Automatically approve/reject based on latest prediction
+    predictions = crud.get_predictions_by_customer(db, customer.id)
+    if predictions:
+        latest = predictions[0]
+        status_val = "approved" if latest.recommendation == "Approve" else "rejected"
+        crud.update_loan_status(db, loan.id, status_val)
+        loan.status = status_val
+    
+    log_audit_action(
+        db,
+        action="LOAN_APPLICATION_CREATED",
+        details=f"User {current_user.email} submitted a loan request of ${loan.loan_amount}",
+        user_id=current_user.id,
+        request=request
+    )
+    return loan
+

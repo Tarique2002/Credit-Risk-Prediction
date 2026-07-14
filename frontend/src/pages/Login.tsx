@@ -16,7 +16,11 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-export const Login: React.FC = () => {
+interface LoginProps {
+  isAdminEntry?: boolean;
+}
+
+export const Login: React.FC<LoginProps> = ({ isAdminEntry = false }) => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +42,18 @@ export const Login: React.FC = () => {
         method: "POST",
         body: JSON.stringify(data),
       });
+
+      // strict role validation based on route entry point
+      if (isAdminEntry && response.role === "user") {
+        setError("Standard user accounts are restricted from accessing the admin console.");
+        setLoading(false);
+        return;
+      }
+      if (!isAdminEntry && response.role !== "user") {
+        setError("Administrator accounts must utilize the secure /admin/login terminal.");
+        setLoading(false);
+        return;
+      }
 
       login(
         response.access_token,
@@ -80,7 +96,7 @@ export const Login: React.FC = () => {
       {/* Back to Home Link */}
       <Link 
         to="/"
-        className="absolute top-8 left-8 flex items-center gap-2 text-xs font-mono text-slate-500 hover:text-slate-200 transition-colors"
+        className="absolute top-8 left-8 flex items-center gap-2 text-xs font-mono text-slate-500 hover:text-slate-200 transition-colors animate-pulse-glow"
       >
         <ChevronLeft className="w-4 h-4" /> BACK TO HOMEPAGE
       </Link>
@@ -91,7 +107,7 @@ export const Login: React.FC = () => {
         animate="visible"
         className="w-full max-w-md"
       >
-        <div className="p-8 md:p-10 rounded-3xl glass-panel border-white/[0.04] shadow-2xl relative overflow-hidden animate-pulse-glow">
+        <div className="p-8 md:p-10 rounded-3xl glass-panel border-white/[0.04] shadow-2xl relative overflow-hidden">
           <motion.div variants={itemVariants} className="flex flex-col items-center mb-8">
             <div className="relative mb-4">
               <div className="bg-cyan-500/10 p-4 rounded-3xl border border-cyan-500/20 text-cyan-400">
@@ -101,10 +117,10 @@ export const Login: React.FC = () => {
             </div>
             
             <h1 className="text-xl font-extrabold tracking-widest text-center uppercase bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent">
-              Credit Risk Engine
+              {isAdminEntry ? "Admin Terminal" : "Credit Intel Portal"}
             </h1>
             <p className="text-[9px] font-mono text-slate-500 mt-1.5 uppercase tracking-widest">
-              Financial Analysis Portal
+              {isAdminEntry ? "Security Underwriting Core" : "Borrower Secure Session"}
             </p>
           </motion.div>
 
@@ -122,13 +138,13 @@ export const Login: React.FC = () => {
             <motion.div variants={itemVariants} className="space-y-2">
               <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 text-cyan-400" />
-                Corporate Email Address
+                Email Address
               </label>
               <input
                 type="email"
                 {...register("email")}
                 className="w-full bg-[#070d19]/40 border border-white/[0.06] hover:border-white/[0.12] focus:border-cyan-500/40 rounded-2xl px-4 py-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none transition-all font-sans"
-                placeholder="e.g. admin@bank.com"
+                placeholder={isAdminEntry ? "e.g. admin@bank.com" : "e.g. user@example.com"}
               />
               {errors.email && (
                 <p className="text-[10px] font-mono text-red-400 mt-1">{errors.email.message}</p>
@@ -171,26 +187,28 @@ export const Login: React.FC = () => {
                   {loading ? (
                     <RefreshCw className="w-4 h-4 animate-spin" data-magnetic-inner />
                   ) : (
-                    <span data-magnetic-inner>Authenticate Terminal</span>
+                    <span data-magnetic-inner>Authenticate Session</span>
                   )}
                 </button>
               </Magnetic>
             </motion.div>
           </form>
 
-          <motion.div
-            variants={itemVariants}
-            className="mt-8 pt-6 border-t border-white/[0.04] text-center"
-          >
-            <p className="text-xs text-slate-500 flex items-center justify-center gap-1.5">
-              <span>New agent terminal?</span>{" "}
-              <Magnetic strength={0.2} scale={1.03}>
-                <Link to="/register" className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors font-mono uppercase tracking-wider">
-                  <span data-magnetic-inner>Register Credentials</span>
-                </Link>
-              </Magnetic>
-            </p>
-          </motion.div>
+          {!isAdminEntry && (
+            <motion.div
+              variants={itemVariants}
+              className="mt-8 pt-6 border-t border-white/[0.04] text-center"
+            >
+              <p className="text-xs text-slate-500 flex items-center justify-center gap-1.5 font-sans">
+                <span>New borrower?</span>{" "}
+                <Magnetic strength={0.2} scale={1.03}>
+                  <Link to="/register" className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors font-mono uppercase tracking-wider">
+                    <span data-magnetic-inner>Create Account</span>
+                  </Link>
+                </Magnetic>
+              </p>
+            </motion.div>
+          )}
         </div>
       </motion.div>
     </div>

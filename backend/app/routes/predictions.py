@@ -10,7 +10,7 @@ from typing import List, Optional
 
 from app.database import get_db
 from app import schemas, models, crud
-from app.security import require_analyst, require_admin, log_audit_action
+from app.security import require_analyst, require_admin, log_audit_action, get_current_user
 from app.config import settings
 
 # Import ML functions
@@ -26,9 +26,37 @@ def predict_credit_risk(
     payload: schemas.PredictionRequest,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_analyst)
+    current_user: models.User = Depends(get_current_user)
 ):
     """Predicts default probability and returns credit scores, SHAP explanations, and fraud checks."""
+    if current_user.role == "user":
+        payload.email = current_user.email
+        customer = crud.get_customer_by_email(db, current_user.email)
+        
+        customer_data = schemas.CustomerCreate(
+            first_name=payload.first_name or current_user.email.split("@")[0],
+            last_name=payload.last_name or "User",
+            email=current_user.email,
+            phone=payload.phone or "+1000000000",
+            income=payload.income,
+            employment_status=payload.employment_status,
+            employment_duration_months=payload.employment_duration_months,
+            debt_to_income_ratio=payload.debt_to_income_ratio,
+            payment_history_score=payload.payment_history_score,
+            existing_loans_count=payload.existing_loans_count,
+            total_debt=payload.total_debt,
+            savings_balance=payload.savings_balance
+        )
+        
+        if not customer:
+            customer = crud.create_customer(db, customer_data)
+        else:
+            customer = crud.update_customer(db, customer.id, customer_data)
+            
+        payload.customer_id = customer.id
+        payload.first_name = customer.first_name
+        payload.last_name = customer.last_name
+        payload.phone = customer.phone
     # Build dataframe for ML model
     input_dict = {
         "income": [payload.income],
@@ -274,10 +302,18 @@ def get_predictions_history(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_analyst)
+    current_user: models.User = Depends(get_current_user)
 ):
     """Retrieves standard history logs of calculated default predictions."""
-    history, total = crud.get_prediction_history(db, skip, limit)
+    if current_user.role == "user":
+        customer = crud.get_customer_by_email(db, current_user.email)
+        if not customer:
+            return {"items": [], "total": 0, "skip": skip, "limit": limit}
+        history = crud.get_predictions_by_customer(db, customer.id)
+        total = len(history)
+        history = history[skip : skip + limit]
+    else:
+        history, total = crud.get_prediction_history(db, skip, limit)
     
     formatted_history = []
     for r in history:

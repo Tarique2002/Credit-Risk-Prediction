@@ -193,3 +193,28 @@ def reset_password(data: schemas.PasswordResetRequest, db: Session = Depends(get
         user_id=user.id
     )
     return {"message": "Password has been successfully updated."}
+
+@router.post("/change-password")
+def change_password(
+    data: schemas.ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Updates password for the currently authenticated user."""
+    if not verify_password(data.old_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect old password"
+        )
+    from app.security import hash_password
+    current_user.hashed_password = hash_password(data.new_password)
+    db.commit()
+    
+    log_audit_action(
+        db,
+        action="PASSWORD_CHANGED",
+        details=f"User {current_user.email} changed their password",
+        user_id=current_user.id
+    )
+    return {"message": "Password successfully updated"}
+

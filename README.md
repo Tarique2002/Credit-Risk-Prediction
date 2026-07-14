@@ -15,9 +15,34 @@ Designed with a high-fidelity dark glassmorphic UI layout ("Bloomberg meets Appl
 
 ---
 
+## Role-Based Access Control & Workflows
+
+This platform supports two distinct roles with separate navigation trees and endpoints, guarded on both the frontend (React Router Guards) and backend (FastAPI Role Verification middleware):
+
+### 1. ADMIN / OPERATOR FLOW
+* **Dedicated Entry Point**: `/admin/login` (Prevents user enumeration and isolates administrative console).
+* **Workspace & Features**:
+  - **Portfolio Monitors (Dashboard)**: View aggregate stats (Total applications, average credit scores, model accuracies, system growth rate, risk category breakdown chart).
+  - **Client Directory**: View, search, and edit borrower profiles; register new customers; view customer details and active loan portfolios.
+  - **Credit Decisioning**: Manually input files or run bulk CSV datasets for batch risk calculations.
+  - **AI Risk Copilot**: Contextual AI underwriting agent allowing selection of any registered borrower profile for decision breakdowns.
+  - **Admin Controls**: Synchronize logs, toggle RBAC user access privileges, monitor model drift parameters (PSI), and trigger retraining loops.
+
+### 2. BORROWER / USER FLOW
+* **Dedicated Entry Point**: `/login` and `/register` (Standard public CTAs).
+* **Workspace & Features**:
+  - **My Dashboard**: Personal dashboard showing individual FICO score rating card, total liability, savings balance, active loan applications status, recent neural assessments logs, and PDF report triggers.
+  - **Apply for Credit**: Interactive multi-step form wizard (Identity -> Income -> Assets -> Credit -> Review) that automatically pre-fills details from past assessments, updates their personal customer profile, and calculates defaults.
+  - **My Risk Copilot**: Locked context AI assistant loaded with their personal assessment data.
+  - **Profile Dossier**: Inline form to modify personal parameters and synchronize details securely.
+  - **Credentials Management**: Safe password update utility calling secure hashing API.
+
+---
+
 ## Security & Compliance Architecture
 
 - **JWT Auth & Refresh Rotation**: Implements access token expiration (30 mins) and secure refresh token rotation (7 days) to limit session hijacking.
+- **Isolate Logins**: Separates `/login` (Standard Users) and `/admin/login` (Admin/Analysts).
 - **Account Lockouts**: Brute force prevention lockouts for 15 minutes after 5 consecutive failed login attempts.
 - **slowapi Rate Limiting**: Limit API request spamming to protect endpoints.
 - **Strict Validations**: Input sanitization and bounds check via Zod schemas (Frontend) and Pydantic v2 schemas (Backend).
@@ -27,15 +52,13 @@ Designed with a high-fidelity dark glassmorphic UI layout ("Bloomberg meets Appl
 
 ## Seed Accounts (Database Autoseeds on boot)
 
-- **Underwriter Analyst Account**:
-  - **Email**: `analyst@bank.com`
-  - **Password**: `AnalystPass123!`
-  - **Permissions**: Run predictions, search profiles, download reports, consult Gemini.
-  
-- **System Administrator Account**:
+- **Standard Administrator Account**:
   - **Email**: `admin@bank.com`
   - **Password**: `AdminPass123!`
-  - **Permissions**: Full analyst scope + view audit logs, toggle user roles, monitor model drift, and trigger ML retraining pipeline.
+  
+- **Standard Analyst Account**:
+  - **Email**: `analyst@bank.com`
+  - **Password**: `AnalystPass123!`
 
 ---
 
@@ -80,5 +103,3 @@ docker-compose up --build
 - **React Web App**: `http://localhost` (Port 80)
 - **FastAPI Documentation**: `http://localhost:8000/swagger`
 - **Postgres Database**: `localhost:5432`
-Updated project documentation.
-Update README

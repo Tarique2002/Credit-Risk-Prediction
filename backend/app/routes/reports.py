@@ -6,7 +6,7 @@ import csv
 
 from app.database import get_db
 from app import models, crud
-from app.security import require_analyst
+from app.security import require_analyst, get_current_user
 from app.services.reports import generate_risk_pdf
 from app.services.credit_score import calculate_credit_score
 from app.services.fraud import detect_fraud_alerts
@@ -18,9 +18,17 @@ router = APIRouter(prefix="/reports", tags=["Export & Reporting"])
 def download_risk_report_pdf(
     customer_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_analyst)
+    current_user: models.User = Depends(get_current_user)
 ):
     """Generates and downloads a detailed, styled credit assessment report in PDF format."""
+    if current_user.role == "user":
+        my_customer = crud.get_customer_by_email(db, current_user.email)
+        if not my_customer or my_customer.id != customer_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to download this report."
+            )
+            
     customer = crud.get_customer(db, customer_id)
     if not customer:
         raise HTTPException(

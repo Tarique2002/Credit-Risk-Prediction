@@ -95,16 +95,22 @@ const DashboardLayout: React.FC = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const navigation = [
-    { name: "Portfolio Monitors", path: "/dashboard", icon: Activity },
-    { name: "Client Directory", path: "/customers", icon: Users },
-    { name: "Credit Decisioning", path: "/predict", icon: Calculator },
-    { name: "AI Risk Copilot", path: "/ai", icon: Bot },
-    ...(user?.role === "admin" 
-      ? [{ name: "Admin Controls", path: "/admin", icon: Shield }] 
-      : []
-    ),
-  ];
+  const navigation = user?.role === "user"
+    ? [
+        { name: "My Dashboard", path: "/dashboard", icon: Activity },
+        { name: "Apply for Credit", path: "/predict", icon: Calculator },
+        { name: "My Risk Copilot", path: "/ai", icon: Bot },
+      ]
+    : [
+        { name: "Portfolio Monitors", path: "/dashboard", icon: Activity },
+        { name: "Client Directory", path: "/customers", icon: Users },
+        { name: "Credit Decisioning", path: "/predict", icon: Calculator },
+        { name: "AI Risk Copilot", path: "/ai", icon: Bot },
+        ...(user?.role === "admin" 
+          ? [{ name: "Admin Controls", path: "/admin", icon: Shield }] 
+          : []
+        ),
+      ];
 
   const handleLogout = () => {
     logout();
@@ -147,7 +153,7 @@ const DashboardLayout: React.FC = () => {
                   <span className="text-xs font-bold tracking-widest bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent uppercase block">
                     Credit Intel
                   </span>
-                  <span className="block text-[8px] font-mono text-slate-500 uppercase tracking-widest mt-0.5">OPS PORTAL</span>
+                  <span className="block text-[8px] font-mono text-slate-500 uppercase tracking-widest mt-0.5">{user?.role === "user" ? "USER HUB" : "OPS PORTAL"}</span>
                 </motion.div>
               )}
             </Link>
@@ -169,7 +175,7 @@ const DashboardLayout: React.FC = () => {
               >
                 <div className="flex items-center gap-2 truncate">
                   <span className="w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.6)] shrink-0" />
-                  <span className="truncate">{activeWorkspace}</span>
+                  <span className="truncate">{user?.role === "user" ? "Borrower Console" : activeWorkspace}</span>
                 </div>
                 <ChevronsUpDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
               </button>
@@ -184,7 +190,7 @@ const DashboardLayout: React.FC = () => {
                       exit={{ opacity: 0, y: 5 }}
                       className="absolute left-4 right-4 mt-1 bg-[#0b0f19] border border-white/[0.06] rounded-xl shadow-2xl p-1 z-50 text-xs text-slate-400 space-y-0.5"
                     >
-                      {["Corporate Underwriting", "Retail Lending Core", "Compliance Sandbox"].map((ws) => (
+                      {(user?.role === "user" ? ["Borrower Core Dashboard", "Asset Verification Hub", "Support Workspace"] : ["Corporate Underwriting", "Retail Lending Core", "Compliance Sandbox"]).map((ws) => (
                         <button
                           key={ws}
                           onClick={() => {
@@ -210,7 +216,7 @@ const DashboardLayout: React.FC = () => {
             <span className={`text-[9px] font-mono uppercase text-slate-500 block px-3 tracking-widest mb-2 ${
               isSidebarCollapsed ? "text-center" : ""
             }`}>
-              {isSidebarCollapsed ? "OPS" : "Operations Control"}
+              {isSidebarCollapsed ? (user?.role === "user" ? "USER" : "OPS") : (user?.role === "user" ? "Borrower Portal" : "Operations Control")}
             </span>
 
             {navigation.map((item) => {
@@ -483,8 +489,8 @@ const DashboardLayout: React.FC = () => {
             >
               <Routes location={location}>
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                <Route path="/customers" element={<ProtectedRoute><CustomerDirectory /></ProtectedRoute>} />
-                <Route path="/customers/:id" element={<ProtectedRoute><CustomerProfile /></ProtectedRoute>} />
+                <Route path="/customers" element={<ProtectedRoute roles={["admin", "analyst"]}><CustomerDirectory /></ProtectedRoute>} />
+                <Route path="/customers/:id" element={<ProtectedRoute roles={["admin", "analyst"]}><CustomerProfile /></ProtectedRoute>} />
                 <Route path="/predict" element={<ProtectedRoute><Predict /></ProtectedRoute>} />
                 <Route path="/ai" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
                 <Route path="/admin" element={<ProtectedRoute roles={["admin"]}><AdminPanel /></ProtectedRoute>} />
@@ -510,6 +516,7 @@ export const App: React.FC = () => {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/admin/login" element={<Login isAdminEntry={true} />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="*" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} />

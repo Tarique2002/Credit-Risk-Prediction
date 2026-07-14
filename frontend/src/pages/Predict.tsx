@@ -9,6 +9,7 @@ import {
   Download, Printer, FileClock, UserCheck
 } from "lucide-react";
 import { apiFetch, apiUploadFetch } from "../utils/api";
+import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Magnetic } from "../components/Magnetic";
 
@@ -31,7 +32,8 @@ const predictSchema = z.object({
 type PredictFormData = z.infer<typeof predictSchema>;
 
 export const Predict: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"single" | "bulk">("single");
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<"single" | "bulk" | any>("single");
   const [customers, setCustomers] = useState<any[]>([]);
   const [loadingCusts, setLoadingCusts] = useState(false);
   
@@ -85,8 +87,31 @@ export const Predict: React.FC = () => {
   };
 
   useEffect(() => {
-    loadCustomers();
-  }, []);
+    if (user?.role !== "user") {
+      loadCustomers();
+    } else {
+      // Pre-fill standard user profile details from customers/me
+      apiFetch("/customers/me")
+        .then((res) => {
+          if (res.profile) {
+            setValue("customer_id", res.profile.id.toString());
+            setValue("first_name", res.profile.first_name);
+            setValue("last_name", res.profile.last_name);
+            setValue("email", res.profile.email);
+            setValue("phone", res.profile.phone);
+            setValue("income", res.profile.income);
+            setValue("employment_status", res.profile.employment_status);
+            setValue("employment_duration_months", res.profile.employment_duration_months);
+            setValue("debt_to_income_ratio", res.profile.debt_to_income_ratio);
+            setValue("payment_history_score", res.profile.payment_history_score);
+            setValue("existing_loans_count", res.profile.existing_loans_count);
+            setValue("total_debt", res.profile.total_debt);
+            setValue("savings_balance", res.profile.savings_balance);
+          }
+        })
+        .catch(() => console.log("No personal profile found for this user account."));
+    }
+  }, [user]);
 
   const handleCustomerSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const custId = e.target.value;
@@ -219,31 +244,33 @@ export const Predict: React.FC = () => {
         </div>
 
         {/* Tab Selector Links */}
-        <div className="flex bg-[#0b0f19] border border-white/[0.04] p-1 rounded-xl shrink-0">
-          <button
-            onClick={() => {
-              setActiveTab("single");
-              setResult(null);
-            }}
-            className={`px-4 py-2 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider transition-all ${
-              activeTab === "single"
-                ? "bg-white/[0.04] text-cyan-400 font-bold border border-white/[0.02]"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
-            Single Underwriting
-          </button>
-          <button
-            onClick={() => setActiveTab("bulk")}
-            className={`px-4 py-2 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider transition-all ${
-              activeTab === "bulk"
-                ? "bg-white/[0.04] text-cyan-400 font-bold border border-white/[0.02]"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
-            Batch Processing
-          </button>
-        </div>
+        {user?.role !== "user" && (
+          <div className="flex bg-[#0b0f19] border border-white/[0.04] p-1 rounded-xl shrink-0">
+            <button
+              onClick={() => {
+                setActiveTab("single");
+                setResult(null);
+              }}
+              className={`px-4 py-2 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider transition-all ${
+                activeTab === "single"
+                  ? "bg-white/[0.04] text-cyan-400 font-bold border border-white/[0.02]"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Single Underwriting
+            </button>
+            <button
+              onClick={() => setActiveTab("bulk")}
+              className={`px-4 py-2 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider transition-all ${
+                activeTab === "bulk"
+                  ? "bg-white/[0.04] text-cyan-400 font-bold border border-white/[0.02]"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Bulk CSV Processing
+            </button>
+          </div>
+        )}
       </div>
 
       <AnimatePresence mode="wait">
@@ -267,21 +294,23 @@ export const Predict: React.FC = () => {
                     <UserCheck className="w-4 h-4 text-cyan-400" /> Borrower Profile Application
                   </h2>
                   
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Users className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                    <select
-                      onChange={handleCustomerSelect}
-                      className="bg-[#030712] border border-white/[0.06] rounded-xl px-3 py-1.5 text-[10px] font-mono text-cyan-400 focus:outline-none w-full sm:w-auto"
-                      defaultValue=""
-                    >
-                      <option value="" disabled>Pre-fill from profile registry...</option>
-                      {customers.map((c) => (
-                        <option key={c.id} value={c.id.toString()}>
-                          {c.first_name} {c.last_name} ({c.email})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {user?.role !== "user" && (
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <Users className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <select
+                        onChange={handleCustomerSelect}
+                        className="bg-[#030712] border border-white/[0.06] rounded-xl px-3 py-1.5 text-[10px] font-mono text-cyan-400 focus:outline-none w-full sm:w-auto"
+                        defaultValue=""
+                      >
+                        <option value="" disabled>Pre-fill from profile registry...</option>
+                        {customers.map((c) => (
+                          <option key={c.id} value={c.id.toString()}>
+                            {c.first_name} {c.last_name} ({c.email})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 {/* Steps Navigation indicator */}

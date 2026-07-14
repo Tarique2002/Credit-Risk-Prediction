@@ -5,6 +5,7 @@ import {
   ChevronRight, BrainCircuit, CornerDownLeft
 } from "lucide-react";
 import { apiFetch } from "../utils/api";
+import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Magnetic } from "../components/Magnetic";
 
@@ -15,6 +16,7 @@ interface Message {
 }
 
 export const AIAssistant: React.FC = () => {
+  const { user } = useAuth();
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustId, setSelectedCustId] = useState<string>("");
   const [selectedCust, setSelectedCust] = useState<any>(null);
@@ -46,8 +48,50 @@ export const AIAssistant: React.FC = () => {
   };
 
   useEffect(() => {
-    loadCustomers();
-  }, []);
+    if (user?.role === "user") {
+      // Fetch own profile details
+      apiFetch("/customers/me")
+        .then((data) => {
+          const profile = data.profile;
+          const latestPrediction = data.predictions && data.predictions[0];
+          const fullCustDetails = {
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            email: profile.email,
+            phone: profile.phone,
+            income: profile.income,
+            debt_to_income_ratio: profile.debt_to_income_ratio,
+            payment_history_score: profile.payment_history_score,
+            existing_loans_count: profile.existing_loans_count,
+            savings_balance: profile.savings_balance,
+            default_probability: latestPrediction ? latestPrediction.default_probability : 0.25,
+            credit_score: latestPrediction ? latestPrediction.credit_score : 680,
+            risk_category: latestPrediction ? latestPrediction.risk_category : "Medium",
+            recommendation: latestPrediction ? latestPrediction.recommendation : "Approve",
+            fraud_flags: [],
+          };
+          setSelectedCust(fullCustDetails);
+          setMessages([
+            {
+              sender: "gemini",
+              text: `### Personal Portfolio Loaded: ${profile.first_name} ${profile.last_name}\n\n**Your Financial Overview:**\n- Annual Income: $${profile.income.toLocaleString()}\n- DTI Ratio: ${(profile.debt_to_income_ratio*100).toFixed(0)}%\n- FICO Credit Score: ${fullCustDetails.credit_score} (${fullCustDetails.risk_category} Risk)\n- Pre-Approval Recommendation: **${fullCustDetails.recommendation.toUpperCase()}**\n\nAsk me any questions about your default risk assessment, score metrics, or roadmaps.`,
+              timestamp: new Date().toLocaleTimeString(),
+            }
+          ]);
+        })
+        .catch(() => {
+          setMessages([
+            {
+              sender: "gemini",
+              text: "### Welcome to Credit Intel Copilot\nTo begin, please submit a credit application to generate risk calculations.",
+              timestamp: new Date().toLocaleTimeString(),
+            }
+          ]);
+        });
+    } else {
+      loadCustomers();
+    }
+  }, [user]);
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
@@ -191,22 +235,24 @@ export const AIAssistant: React.FC = () => {
         </div>
         
         {/* Context Selector */}
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">Context Profile:</span>
-          <select
-            value={selectedCustId}
-            onChange={handleCustomerSelect}
-            className="bg-[#0b0f19] border border-white/[0.06] rounded-xl px-3 py-1.5 text-xs text-cyan-400 font-semibold focus:outline-none"
-            disabled={loadingCusts}
-          >
-            <option value="">General Inquiries Only</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id.toString()}>
-                {c.first_name} {c.last_name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {user?.role !== "user" && (
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">Context Profile:</span>
+            <select
+              value={selectedCustId}
+              onChange={handleCustomerSelect}
+              className="bg-[#0b0f19] border border-white/[0.06] rounded-xl px-3 py-1.5 text-xs text-cyan-400 font-semibold focus:outline-none"
+              disabled={loadingCusts}
+            >
+              <option value="">General Inquiries Only</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id.toString()}>
+                  {c.first_name} {c.last_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -299,7 +345,6 @@ export const AIAssistant: React.FC = () => {
                       ? "bg-cyan-500/[0.02] border border-cyan-500/10 text-cyan-100 rounded-tr-none" 
                       : "bg-white/[0.01] border border-white/[0.03] text-slate-300 rounded-tl-none markdown-container"
                   }`}>
-                    {/* Basic Markdown converter logic for linebreaks & lists */}
                     <div className="space-y-2 whitespace-pre-wrap">
                       {msg.text.split("\n\n").map((para, pIdx) => {
                         if (para.startsWith("###")) {
